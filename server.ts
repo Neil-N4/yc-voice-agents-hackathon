@@ -121,6 +121,43 @@ Bun.serve({
             },
         },
 
+        // Capture a user correction: diff original STT output vs edited text,
+        // extract (wrong, right) phrase pairs, append to passport.
+        "/api/correction": {
+            async POST(req) {
+                const { original, edited } = (await req.json()) as { original: string; edited: string };
+                if (typeof original !== "string" || typeof edited !== "string") {
+                    return Response.json({ error: "original and edited (strings) required" }, { status: 400 });
+                }
+                try {
+                    const raw = await $`.venv/bin/python brain.py correction ${original} ${edited}`
+                        .quiet()
+                        .text();
+
+                    // Same parsing pattern as /api/screenshot-to-terms — find last JSON line.
+                    const lines = raw.trim().split("\n").filter(Boolean);
+                    let added: unknown[] | null = null;
+                    for (let i = lines.length - 1; i >= 0; i--) {
+                        const line = lines[i].trim();
+                        if (!line.startsWith("[")) continue;
+                        try {
+                            const parsed = JSON.parse(line);
+                            if (Array.isArray(parsed)) { added = parsed; break; }
+                        } catch { /* keep scanning */ }
+                    }
+                    if (!added) {
+                        return Response.json({
+                            error: "could not parse corrections from brain.py output",
+                            raw: raw.slice(-500),
+                        }, { status: 500 });
+                    }
+                    return Response.json({ added });
+                } catch (err) {
+                    return Response.json({ error: String(err) }, { status: 500 });
+                }
+            },
+        },
+
         // Transcription — will call stt.py once Neil's stt.py lands
         "/api/transcribe": {
             async POST(req) {

@@ -283,8 +283,54 @@ def style_transfer(text: str, target_app: str, passport: VoicePassport,
 
 
 def capture_correction(original: str, edited: str, passport: VoicePassport) -> list[Correction]:
-    """Diff original STT output vs user-edited result. Append word-level corrections."""
-    raise NotImplementedError("TODO: build correction capture")
+    """Diff original STT output vs user-edited result. Append phrase-level corrections to the passport.
+
+    Mutates `passport.corrections` in place:
+    - Existing (wrong, right) pair → increment `uses`, update `last_applied`.
+    - New pair → append a new `Correction`.
+
+    Returns the list of NEWLY-added corrections (not the already-known ones).
+    The caller is responsible for persisting the passport via `save_passport`.
+    """
+    import difflib
+    import uuid
+
+    orig_words = original.split()
+    edit_words = edited.split()
+
+    new_corrections: list[Correction] = []
+    now = now_iso()
+
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(a=orig_words, b=edit_words).get_opcodes():
+        if tag != "replace":
+            continue
+        wrong = " ".join(orig_words[i1:i2]).strip()
+        right = " ".join(edit_words[j1:j2]).strip()
+        if not wrong or not right or wrong.lower() == right.lower():
+            continue
+
+        existing = next(
+            (c for c in passport.corrections if c.wrong == wrong and c.right == right),
+            None,
+        )
+        if existing is not None:
+            existing.uses += 1
+            existing.last_applied = now
+            continue
+
+        new_corr = Correction(
+            id=f"correction_{uuid.uuid4().hex[:8]}",
+            wrong=wrong,
+            right=right,
+            confidence=1.0,  # user-confirmed
+            uses=1,
+            last_applied=now,
+        )
+        passport.corrections.append(new_corr)
+        new_corrections.append(new_corr)
+
+    passport.updated = now
+    return new_corrections
 
 
 # ============================================================
@@ -330,6 +376,16 @@ def _cli() -> None:
         finally:
             unload_gemma()
 
+    elif cmd == "correction":
+        if len(sys.argv) < 4:
+            print('usage: python brain.py correction "<original>" "<edited>"')
+            return
+        original, edited = sys.argv[2], sys.argv[3]
+        passport = load_passport()
+        new = capture_correction(original, edited, passport)
+        save_passport(passport)
+        print(json.dumps([asdict(c) for c in new]))
+
     elif cmd == "info":
         print(f"CACTUS_AVAILABLE: {CACTUS_AVAILABLE}")
         print(f"Profile path: {PROFILE_PATH}")
@@ -340,7 +396,7 @@ def _cli() -> None:
 
     else:
         print(f"unknown command: {cmd}")
-        print("available: style, info")
+        print("available: style, terms, correction, info")
 
 
 if __name__ == "__main__":
