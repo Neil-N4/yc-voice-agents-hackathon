@@ -327,6 +327,13 @@
                     <div>Drop a screenshot or click to select</div>
                     <input type="file" id="file-input" accept="image/*" hidden>
                 </div>
+
+                <div style="display: flex; gap: 8px; margin-top: 14px;">
+                    <input type="text" id="manual-term-input" placeholder="Add a term manually (e.g. YBuffet)"
+                        style="flex: 1; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; font-family: inherit; font-size: 13px;">
+                    <button class="secondary" id="manual-term-add-btn">Add</button>
+                </div>
+
                 <div class="chips" id="chips"></div>
             </div>
         </div>
@@ -434,10 +441,16 @@
             for (const term of (profile?.terms ?? [])) {
                 const chip = document.createElement('span');
                 chip.className = 'chip';
-                chip.innerHTML = `<span class="chip-text" contenteditable="true">${term.text}</span><button class="chip-remove" data-id="${term.id}" title="Remove">✕</button>`;
+                // data-id used by remove; data-original used by inline rename to detect no-op edits.
+                chip.innerHTML = `<span class="chip-text" contenteditable="true" data-id="${term.id}" data-original="${escapeAttr(term.text)}">${escapeHtml(term.text)}</span><button class="chip-remove" data-id="${term.id}" title="Remove">✕</button>`;
                 el.appendChild(chip);
             }
         }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+        }
+        function escapeAttr(s) { return escapeHtml(s); }
 
         // ============================================================
         // Step navigation
@@ -563,19 +576,71 @@
             if (f) uploadScreenshot(f);
         });
 
-        // Wire chip remove buttons (delegated)
+        // Chip remove (delegated click)
         document.getElementById('chips').addEventListener('click', async (e) => {
             const btn = e.target.closest('.chip-remove');
             if (!btn) return;
             const id = btn.dataset.id;
             profile.terms = (profile.terms || []).filter(t => t.id !== id);
+            await saveProfile();
+        });
+
+        // Inline rename — commit on Enter or blur, cancel on Escape.
+        document.getElementById('chips').addEventListener('keydown', (e) => {
+            const el = e.target.closest('.chip-text');
+            if (!el) return;
+            if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+            else if (e.key === 'Escape') { el.textContent = el.dataset.original; el.blur(); }
+        });
+        document.getElementById('chips').addEventListener('blur', async (e) => {
+            const el = e.target.closest('.chip-text');
+            if (!el) return;
+            const id = el.dataset.id;
+            const newText = el.textContent.trim();
+            const original = el.dataset.original;
+            if (!newText) { el.textContent = original; return; }
+            if (newText === original) return;
+            const term = (profile.terms || []).find(t => t.id === id);
+            if (!term) return;
+            term.text = newText;
+            await saveProfile();
+        }, true); // useCapture=true so blur fires on descendant contenteditables
+
+        // Manual term add
+        async function addManualTerm(text) {
+            text = text.trim();
+            if (!text) return;
+            if (!profile) await refreshProfile();
+            const lower = text.toLowerCase();
+            const exists = (profile.terms || []).some(t => t.text.toLowerCase() === lower);
+            if (exists) return;
+            profile.terms.push({
+                id: `t_${Date.now()}`,
+                text,
+                source: 'manual',
+                added: new Date().toISOString(),
+            });
+            await saveProfile();
+        }
+        document.getElementById('manual-term-add-btn').addEventListener('click', async () => {
+            const input = document.getElementById('manual-term-input');
+            await addManualTerm(input.value);
+            input.value = '';
+            input.focus();
+        });
+        document.getElementById('manual-term-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') document.getElementById('manual-term-add-btn').click();
+        });
+
+        // Shared save helper — PUT the current profile and refresh the UI.
+        async function saveProfile() {
             await fetch('/api/profile', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(profile),
             });
             await refreshProfile();
-        });
+        }
 
         // ============================================================
         // Step 3 — Calibrate: generate personalized script + simulated accuracy bars

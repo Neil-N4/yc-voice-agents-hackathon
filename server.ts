@@ -35,6 +35,38 @@ Bun.serve({
         // Static
         "/": async () => new Response(Bun.file("index.html")),
 
+        // QR code page for audience participation: scans to whatever URL the
+        // viewer is hitting (works for localhost, ngrok tunnel, whatever).
+        "/qr": async (req) => {
+            const url = new URL(req.url);
+            const host = req.headers.get("host") || `localhost:${PORT}`;
+            const proto = host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https";
+            const targetUrl = `${proto}://${host}/`;
+            const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=420x420&margin=20&bgcolor=09090b&color=fafafa&data=${encodeURIComponent(targetUrl)}`;
+            const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Voice Right — try it</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #09090b; color: #fafafa; font-family: 'Inter', -apple-system, system-ui, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
+.card { text-align: center; max-width: 520px; }
+h1 { font-size: 42px; letter-spacing: -0.02em; margin-bottom: 8px; }
+.tagline { color: #a1a1aa; font-size: 15px; margin-bottom: 40px; }
+.qr-wrap { background: #09090b; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 28px; display: inline-block; }
+img { display: block; width: 100%; max-width: 380px; height: auto; }
+.url { margin-top: 24px; font-family: 'SF Mono', ui-monospace, monospace; font-size: 13px; color: #a1a1aa; word-break: break-all; }
+.hint { margin-top: 28px; color: #71717a; font-size: 13px; line-height: 1.6; }
+</style></head>
+<body>
+<div class="card">
+  <h1>Voice Right</h1>
+  <div class="tagline">Hear👂 you and write✍️ for you correctly, everywhere.</div>
+  <div class="qr-wrap"><img src="${qrImg}" alt="QR code"></div>
+  <div class="url">${targetUrl}</div>
+  <div class="hint">Scan with your phone camera to try Voice Right right now.<br>Your voice never leaves your device.</div>
+</div>
+</body></html>`;
+            return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+        },
+
         // Profile API
         "/api/profile": {
             async GET() {
