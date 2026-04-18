@@ -19,11 +19,17 @@ This file is also exposed as `AGENTS.md` (Codex convention) and `.cursorrules` (
 - **STT:** dual STT pipeline (see Jenny's prior `voice-passport-prototype` for reference patterns only — NO code copying, fresh build only per hackathon rules)
 - **Runtime:** TBD — likely Python for Cactus integration
 
-## Workflow (BRANCH + DIRECT MERGE — updated 2026-04-18 evening)
+## Workflow (BRANCH + LOCAL MERGE, NO PRs — updated 2026-04-18 evening)
 
-**Rule: build on a feature branch, push the branch to GitHub, merge to `main` directly. No pull requests, no review gate — hackathon speed.** Applies to every contributor and every AI session in this repo.
+**Rule: build on a feature branch, push the branch, merge to `main` LOCALLY with `git merge`. 🚫 NEVER open a pull request.** Applies to every contributor and every AI session in this repo.
 
-**Exact flow for any build / change:**
+**🚫 FORBIDDEN commands:**
+- `gh pr create` — NEVER
+- `gh pr merge` — NEVER
+- Clicking **Compare & pull request** or **Merge pull request** in GitHub UI — NEVER
+- When `git push` output suggests a URL like "Create a pull request for 'branch' on GitHub by visiting: https://..." — IGNORE IT.
+
+**Exact flow — the ONLY allowed merge path:**
 
 ```bash
 # start new work
@@ -35,13 +41,17 @@ git checkout -b jenny/<feature>         # feature-descriptive name
 git add <files>
 git commit -m "..."
 
-# when ready to land (or hit a milestone)
-git push -u origin jenny/<feature>      # visible to Neil on GitHub
+# push branch for visibility (teammates can see it on GitHub — NOT as a PR)
+git push -u origin jenny/<feature>
+
+# LAND the work — these are the only merge-to-main commands allowed
 git checkout main
 git pull origin main                     # sync in case main moved
 git merge --no-ff jenny/<feature> -m "merge: <one-line summary>"
 git push origin main
-git checkout jenny/<feature>             # return to feature branch for follow-up
+
+# optional: return to the branch if continuing work
+git checkout jenny/<feature>
 ```
 
 **Per-turn discipline (for AI sessions):** every time the user sends an input, the AI session must (a) pull latest `main` before substantive work, and (b) report the current branch on the first line of its reply (`**Branch: \`<name>\`**`).
@@ -51,7 +61,7 @@ git checkout jenny/<feature>             # return to feature branch for follow-u
 - Never force-push or rewrite `main`.
 - If `git merge` hits a conflict, resolve locally before pushing. Don't force.
 - Don't merge Neil's branches (`neil/*`) or ops branches (`ops/*`) without verbal OK.
-- Branches are cheap — one per feature or per commit is fine. Delete after merge is optional.
+- Branches are cheap — one per feature or per commit is fine.
 - Verbal coordination for overlapping changes. If two people edit the same file simultaneously, talk it out — don't fight git.
 
 ## Shared memory across AI sessions (hackathon scratchpad)
