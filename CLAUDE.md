@@ -38,6 +38,16 @@ This file is also exposed as `AGENTS.md` (Codex convention) and `.cursorrules` (
 - Don't merge Neil's branches to `main` without his verbal OK — he's the repo owner.
 
 **When a PR still makes sense:** optional, only when you want a teammate sanity-check or to document a risky change. Default path = no PR.
+
+## Multi-terminal / multi-AI coordination
+
+Multiple AI agents (Claude Code, Cursor, Codex, etc.) may run simultaneously in different terminals against this repo. To prevent branch-switch race conditions:
+
+1. **AI agents MUST NOT check out `main` directly.** Stay on your feature branch. Before any `git add` or `git commit`, run `git branch --show-current` and verify it matches the branch you claimed. If the branch changed unexpectedly (another terminal switched it), STOP and tell the user — do not commit blindly.
+2. **Only the human operator (Jenny, via her zsh terminal) merges to `main` and pushes `main`.** AI agents commit + push their feature branches to `origin` only. Never run `git merge <anything> main` or `git push origin main` from an AI session.
+3. **For genuine parallelism, use `git worktree`.** Each AI agent can have its own working directory pinned to its own branch: `git worktree add ~/yc-<role> <branch>`. Worktrees share the same `.git` but have independent HEADs, so checkouts never collide. Coordinator worktrees (`~/yc-ops`) exist for git housekeeping that stays out of the feature terminals' way.
+4. **Push often, trust origin.** Local state is disposable in a multi-agent setup. Commit small, push every ~15 min. `origin/<branch>` is the source of truth, not the local working copy.
+
 - **gstack skills:** fully wired. Common flows:
   - `/checkpoint` — save progress (syncs to Drive via MCP)
   - `/office-hours` — design doc sessions (syncs to Drive via MCP)
