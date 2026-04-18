@@ -74,6 +74,53 @@ Bun.serve({
             },
         },
 
+        // Screenshot → Gemma 4 E4B vision → term extraction
+        "/api/screenshot-to-terms": {
+            async POST(req) {
+                try {
+                    const formData = await req.formData();
+                    const file = formData.get("file") as File | null;
+                    if (!file || typeof file === "string") {
+                        return Response.json({ error: "no file uploaded (form field 'file')" }, { status: 400 });
+                    }
+
+                    // Write to a temp file brain.py can read
+                    const ext = (file.name.split(".").pop() || "png").toLowerCase();
+                    const tmpPath = `/tmp/voice-right-upload-${Date.now()}.${ext}`;
+                    await Bun.write(tmpPath, file);
+
+                    const raw = await $`.venv/bin/python brain.py terms ${tmpPath}`.quiet().text();
+
+                    // Find the last line that parses as a JSON array (brain.py emits tensor
+                    // debug + [WARN] lines from Cactus before the final JSON).
+                    const lines = raw.trim().split("\n").filter(Boolean);
+                    let terms: string[] | null = null;
+                    for (let i = lines.length - 1; i >= 0; i--) {
+                        const line = lines[i].trim();
+                        if (!line.startsWith("[")) continue;
+                        try {
+                            const parsed = JSON.parse(line);
+                            if (Array.isArray(parsed) && parsed.every(t => typeof t === "string")) {
+                                terms = parsed;
+                                break;
+                            }
+                        } catch { /* keep scanning */ }
+                    }
+
+                    if (!terms) {
+                        return Response.json({
+                            error: "could not parse terms from brain.py output",
+                            raw: raw.slice(-500),
+                        }, { status: 500 });
+                    }
+
+                    return Response.json({ terms, image: tmpPath });
+                } catch (err) {
+                    return Response.json({ error: String(err) }, { status: 500 });
+                }
+            },
+        },
+
         // Transcription — will call stt.py once Neil's stt.py lands
         "/api/transcribe": {
             async POST(req) {

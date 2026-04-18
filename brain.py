@@ -163,8 +163,65 @@ def unload_gemma() -> None:
 # ============================================================
 
 def extract_terms_from_screenshot(image_path: str) -> list[str]:
-    """Use Gemma 4 E4B vision to extract domain vocabulary from a screenshot."""
-    raise NotImplementedError("TODO: build screenshot → term extraction")
+    """Use Gemma 4 E4B vision to extract domain vocabulary from a screenshot.
+
+    Pipeline:
+    1. Pass image to Gemma 4 E4B via cactus_complete with `images: [path]` in the message.
+    2. Prompt emphasizes anti-hallucination (only extract visible terms).
+    3. Parse one term per line, strip, dedupe.
+    """
+    if not CACTUS_AVAILABLE:
+        raise RuntimeError("Cactus not available — extract_terms_from_screenshot requires Gemma 4 E4B")
+
+    if not Path(image_path).exists():
+        raise FileNotFoundError(f"Screenshot not found: {image_path}")
+
+    model = load_gemma()
+
+    system_prompt = (
+        "You extract vocabulary terms from a screenshot. "
+        "Look at the image and pull out proper nouns, brand/product names, domain-specific jargon, "
+        "technical terms, acronyms, and unique people names that are clearly visible in the text.\n\n"
+        "Rules:\n"
+        "- ONLY extract terms that are clearly visible in the image. Do NOT invent or infer terms.\n"
+        "- Skip common words (the, and, is, of, for, etc.).\n"
+        "- Skip generic UI chrome (Send, Inbox, Menu, Settings, etc.) unless it's clearly domain-specific.\n"
+        "- Output one term per line — no bullets, no numbering, no quotes, no explanations.\n"
+        "- If the image has no extractable vocabulary, output exactly the single word: NONE"
+    )
+
+    messages = json.dumps([
+        {"role": "system", "content": system_prompt},
+        {
+            "role": "user",
+            "content": "Extract the vocabulary terms from this screenshot.",
+            "images": [str(image_path)],
+        },
+    ])
+
+    options = json.dumps({"max_tokens": 400, "temperature": 0.1})
+    result = json.loads(cactus_complete(model, messages, options, None, None))
+
+    if not result.get("success"):
+        raise RuntimeError(f"Gemma 4 E4B vision failed: {result.get('error')}")
+
+    raw = result["response"].strip()
+    if raw.upper().strip() == "NONE":
+        return []
+
+    # Parse: one term per line, strip, drop empties + 1-char junk + duplicates
+    seen: set[str] = set()
+    out: list[str] = []
+    for line in raw.splitlines():
+        term = line.strip().strip("-•*·").strip()
+        if not term or len(term) < 2:
+            continue
+        low = term.lower()
+        if low in seen:
+            continue
+        seen.add(low)
+        out.append(term)
+    return out
 
 
 def extract_style_from_content(content: str, app: str) -> AppStyle:
@@ -257,6 +314,19 @@ def _cli() -> None:
         try:
             out = style_transfer(text, app, passport, prefs)
             print(out)
+        finally:
+            unload_gemma()
+
+    elif cmd == "terms":
+        if len(sys.argv) < 3:
+            print("usage: python brain.py terms <image_path>")
+            return
+        image_path = sys.argv[2]
+        try:
+            terms = extract_terms_from_screenshot(image_path)
+            # Output JSON so the server can parse reliably (vs. line-by-line which
+            # can be corrupted by Cactus stderr [WARN] messages).
+            print(json.dumps(terms))
         finally:
             unload_gemma()
 

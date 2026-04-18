@@ -456,6 +456,100 @@
         });
 
         // ============================================================
+        // Step 2 — Learn: screenshot → Gemma 4 vision → term chips
+        // ============================================================
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('file-input');
+
+        async function uploadScreenshot(file) {
+            if (!file || !file.type?.startsWith('image/')) {
+                alert('Please drop an image file (PNG/JPG/etc).');
+                return;
+            }
+            const dzHtml = dropzone.innerHTML;
+            dropzone.innerHTML = `<div>Reading with Gemma 4 E4B... this takes a few seconds.</div>`;
+            dropzone.style.opacity = '0.7';
+
+            try {
+                const fd = new FormData();
+                fd.append('file', file);
+                const r = await fetch('/api/screenshot-to-terms', { method: 'POST', body: fd });
+                const j = await r.json();
+                if (j.error) {
+                    dropzone.innerHTML = `<div style="color: var(--danger)">Error: ${j.error}</div>`;
+                    return;
+                }
+                // Merge new terms into profile (dedupe by lowercased text)
+                if (!profile) await refreshProfile();
+                const existing = new Set((profile.terms || []).map(t => t.text.toLowerCase()));
+                const now = new Date().toISOString();
+                const added = [];
+                for (const text of (j.terms || [])) {
+                    if (existing.has(text.toLowerCase())) continue;
+                    profile.terms.push({
+                        id: `t_${Date.now()}_${added.length}`,
+                        text,
+                        source: 'screenshot',
+                        added: now,
+                    });
+                    existing.add(text.toLowerCase());
+                    added.push(text);
+                }
+                // Persist
+                await fetch('/api/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(profile),
+                });
+                await refreshProfile();
+                dropzone.innerHTML = `<div>✓ Extracted ${j.terms.length} terms (${added.length} new). Drop another screenshot to add more.</div>`;
+            } catch (err) {
+                dropzone.innerHTML = `<div style="color: var(--danger)">Error: ${err.message}</div>`;
+            } finally {
+                dropzone.style.opacity = '1';
+                // Restore original label after 2.5s
+                setTimeout(() => { dropzone.innerHTML = dzHtml; }, 2500);
+            }
+        }
+
+        dropzone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            const f = e.target.files?.[0];
+            if (f) uploadScreenshot(f);
+            fileInput.value = ''; // allow re-selecting same file
+        });
+        ['dragenter', 'dragover'].forEach(ev => {
+            dropzone.addEventListener(ev, (e) => {
+                e.preventDefault();
+                dropzone.classList.add('dragover');
+            });
+        });
+        ['dragleave', 'drop'].forEach(ev => {
+            dropzone.addEventListener(ev, (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('dragover');
+            });
+        });
+        dropzone.addEventListener('drop', (e) => {
+            const f = e.dataTransfer?.files?.[0];
+            if (f) uploadScreenshot(f);
+        });
+
+        // Wire chip remove buttons (delegated)
+        document.getElementById('chips').addEventListener('click', async (e) => {
+            const btn = e.target.closest('.chip-remove');
+            if (!btn) return;
+            const id = btn.dataset.id;
+            profile.terms = (profile.terms || []).filter(t => t.id !== id);
+            await fetch('/api/profile', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(profile),
+            });
+            await refreshProfile();
+        });
+
+        // ============================================================
         // Step 1 — Microphone test (device selector + level meter)
         // ============================================================
         const micState = {
