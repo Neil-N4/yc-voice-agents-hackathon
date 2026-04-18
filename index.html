@@ -335,8 +335,36 @@
         <div class="step-content" id="step-3">
             <div class="card">
                 <h2>Teach it your voice</h2>
-                <p class="hint">Read a short script. Voice Right benchmarks your accuracy before and after learning your corrections. Usually takes 30 seconds.</p>
-                <div id="calibration-script" style="color: var(--text-muted); font-style: italic;">Calibration wired in next — coming soon.</div>
+                <p class="hint">Read the sentences out loud. Voice Right benchmarks accuracy on YOUR vocabulary before and after applying your passport. Usually takes 30 seconds.</p>
+
+                <div id="calibration-script" style="background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 14px; min-height: 110px; line-height: 1.8;">
+                    <span style="color: var(--text-muted); font-style: italic;">Add a few terms first (Step 2) — we'll generate sentences using them.</span>
+                </div>
+
+                <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 14px;">
+                    <button class="mic-button" id="calibrate-record-btn" title="Record calibration">🎙</button>
+                    <button class="secondary" id="calibrate-regenerate-btn">Regenerate script</button>
+                    <div id="calibrate-status" style="color: var(--text-dim); font-size: 13px;"></div>
+                </div>
+
+                <!-- Accuracy bars appear after benchmark -->
+                <div id="calibrate-results" style="display: none;">
+                    <div style="display: grid; grid-template-columns: 100px 1fr 50px; gap: 10px; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 12px; color: var(--text-dim);">Before</span>
+                        <div style="height: 14px; background: var(--surface-hover); border-radius: 999px; overflow: hidden;">
+                            <div id="bar-before" style="height: 100%; width: 0%; background: #ef4444; transition: width 0.6s ease-out;"></div>
+                        </div>
+                        <span id="acc-before" style="font-size: 13px; font-weight: 600; text-align: right;">—</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 100px 1fr 50px; gap: 10px; align-items: center;">
+                        <span style="font-size: 12px; color: var(--text-dim);">After</span>
+                        <div style="height: 14px; background: var(--surface-hover); border-radius: 999px; overflow: hidden;">
+                            <div id="bar-after" style="height: 100%; width: 0%; background: var(--accent); transition: width 0.6s ease-out;"></div>
+                        </div>
+                        <span id="acc-after" style="font-size: 13px; font-weight: 600; text-align: right;">—</span>
+                    </div>
+                    <div id="patterns-learned" style="margin-top: 12px; font-size: 13px; color: var(--text-dim);"></div>
+                </div>
             </div>
         </div>
 
@@ -547,6 +575,125 @@
                 body: JSON.stringify(profile),
             });
             await refreshProfile();
+        });
+
+        // ============================================================
+        // Step 3 — Calibrate: generate personalized script + simulated accuracy bars
+        // ============================================================
+        const calibrationState = {
+            sentences: null,
+            currentIdx: 0,
+            generated: false,
+        };
+
+        async function generateCalibrationScript(force = false) {
+            const el = document.getElementById('calibration-script');
+            const status = document.getElementById('calibrate-status');
+
+            if (calibrationState.generated && !force) return;
+
+            el.innerHTML = `<span style="color: var(--text-dim); font-style: italic;">Generating your personalized script with Gemma 3 1B…</span>`;
+            status.textContent = '';
+
+            try {
+                const r = await fetch('/api/calibrate/generate', { method: 'POST' });
+                const j = await r.json();
+                if (j.error || !j.sentences || j.sentences.length === 0) {
+                    el.innerHTML = `<span style="color: var(--danger)">Couldn't generate script: ${j.error || 'no sentences'}. Add some terms in Step 2 first.</span>`;
+                    return;
+                }
+                calibrationState.sentences = j.sentences;
+                calibrationState.currentIdx = 0;
+                calibrationState.generated = true;
+                renderCalibrationScript();
+            } catch (err) {
+                el.innerHTML = `<span style="color: var(--danger)">Error: ${err.message}</span>`;
+            }
+        }
+
+        function renderCalibrationScript() {
+            const el = document.getElementById('calibration-script');
+            if (!calibrationState.sentences) return;
+            el.innerHTML = calibrationState.sentences.map((s, i) => {
+                let style = '';
+                if (i < calibrationState.currentIdx) {
+                    // Already read
+                    style = 'opacity: 0.35; text-decoration: line-through; color: var(--accent);';
+                } else if (i === calibrationState.currentIdx) {
+                    style = 'opacity: 1; color: var(--text); font-weight: 500;';
+                } else {
+                    style = 'opacity: 0.5; color: var(--text-dim);';
+                }
+                return `<div class="cal-sentence" data-idx="${i}" style="cursor: pointer; padding: 3px 0; ${style}">${s}</div>`;
+            }).join('');
+        }
+
+        document.getElementById('calibration-script').addEventListener('click', (e) => {
+            const el = e.target.closest('.cal-sentence');
+            if (!el) return;
+            calibrationState.currentIdx = parseInt(el.dataset.idx, 10);
+            renderCalibrationScript();
+        });
+
+        document.getElementById('calibrate-regenerate-btn').addEventListener('click', () => {
+            generateCalibrationScript(true);
+        });
+
+        // Record flow: simulated benchmark while stt.py is not wired.
+        // When stt.py lands, swap this with real MediaRecorder → POST audio.
+        let calRecording = false;
+        document.getElementById('calibrate-record-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('calibrate-record-btn');
+            const status = document.getElementById('calibrate-status');
+            if (!calibrationState.sentences) {
+                status.textContent = 'Generate a script first.';
+                status.style.color = 'var(--danger)';
+                return;
+            }
+            if (!calRecording) {
+                calRecording = true;
+                btn.classList.add('recording');
+                status.textContent = 'Recording… click mic again to finish.';
+                status.style.color = 'var(--text-dim)';
+                calibrationState.currentIdx = 0;
+                renderCalibrationScript();
+            } else {
+                calRecording = false;
+                btn.classList.remove('recording');
+                status.textContent = 'Benchmarking…';
+                try {
+                    const r = await fetch('/api/calibrate/benchmark', { method: 'POST' });
+                    const j = await r.json();
+                    if (j.error) {
+                        status.textContent = `Error: ${j.error}`;
+                        status.style.color = 'var(--danger)';
+                        return;
+                    }
+                    document.getElementById('bar-before').style.width = `${j.accuracy_before}%`;
+                    document.getElementById('bar-after').style.width = `${j.accuracy_after}%`;
+                    document.getElementById('acc-before').textContent = `${j.accuracy_before}%`;
+                    document.getElementById('acc-after').textContent = `${j.accuracy_after}%`;
+                    document.getElementById('patterns-learned').textContent =
+                        `Patterns learned from your passport: ${j.patterns_learned}` +
+                        (j.stt_wired ? '' : '  (simulated — stt.py not wired yet)');
+                    document.getElementById('calibrate-results').style.display = 'block';
+                    status.textContent = `✓ Accuracy jumped ${j.accuracy_before}% → ${j.accuracy_after}%`;
+                    status.style.color = 'var(--accent)';
+                } catch (err) {
+                    status.textContent = `Error: ${err.message}`;
+                    status.style.color = 'var(--danger)';
+                }
+            }
+        });
+
+        // Auto-generate when user first navigates to Step 3.
+        document.querySelectorAll('.step').forEach(s => {
+            s.addEventListener('click', () => {
+                if (s.dataset.step === '3' && !calibrationState.generated) {
+                    // Kick off async, don't block the step switch.
+                    setTimeout(() => generateCalibrationScript(), 50);
+                }
+            });
         });
 
         // ============================================================

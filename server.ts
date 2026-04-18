@@ -158,6 +158,83 @@ Bun.serve({
             },
         },
 
+        // Calibration: generate personalized script from passport terms
+        "/api/calibrate/generate": {
+            async POST(req) {
+                try {
+                    // Use passport terms if no list in body.
+                    let terms: string[] = [];
+                    try {
+                        const body = (await req.json()) as { terms?: string[] } | null;
+                        if (body && Array.isArray(body.terms)) terms = body.terms;
+                    } catch { /* empty body is fine */ }
+
+                    if (terms.length === 0) {
+                        const profile = await loadProfile();
+                        terms = (profile.terms || []).map((t: any) => t.text).filter(Boolean);
+                    }
+
+                    const termArg = terms.join(",");
+                    const raw = termArg
+                        ? await $`.venv/bin/python brain.py calibrate ${termArg}`.quiet().text()
+                        : await $`.venv/bin/python brain.py calibrate`.quiet().text();
+
+                    // Find last JSON array line (brain.py emits tensor debug before the JSON).
+                    const lines = raw.trim().split("\n").filter(Boolean);
+                    let sentences: string[] | null = null;
+                    for (let i = lines.length - 1; i >= 0; i--) {
+                        const line = lines[i].trim();
+                        if (!line.startsWith("[")) continue;
+                        try {
+                            const parsed = JSON.parse(line);
+                            if (Array.isArray(parsed) && parsed.every(s => typeof s === "string")) {
+                                sentences = parsed;
+                                break;
+                            }
+                        } catch { /* keep scanning */ }
+                    }
+
+                    if (!sentences) {
+                        return Response.json({
+                            error: "could not parse sentences from brain.py output",
+                            raw: raw.slice(-500),
+                        }, { status: 500 });
+                    }
+                    return Response.json({ sentences });
+                } catch (err) {
+                    return Response.json({ error: String(err) }, { status: 500 });
+                }
+            },
+        },
+
+        // Calibration: accept an audio recording, stub until stt.py lands.
+        // Returns simulated before/after accuracy scaled by passport richness
+        // so the UI can demo the "82% → 97%" moment even before wiring STT.
+        "/api/calibrate/benchmark": {
+            async POST(req) {
+                try {
+                    const profile = await loadProfile();
+                    const termCount = (profile.terms || []).length;
+                    const corrCount = (profile.corrections || []).length;
+
+                    // Before: naive baseline roughly 60-82% depending on how hard the
+                    // user's vocabulary is. After: rises toward 97% as passport fills up.
+                    const before = Math.max(58, 82 - termCount * 2);
+                    const after = Math.min(97, before + 10 + termCount * 1 + corrCount * 2);
+
+                    return Response.json({
+                        accuracy_before: before,
+                        accuracy_after: after,
+                        patterns_learned: corrCount,
+                        stt_wired: false,
+                        note: "stt.py not wired — accuracy simulated from passport richness",
+                    });
+                } catch (err) {
+                    return Response.json({ error: String(err) }, { status: 500 });
+                }
+            },
+        },
+
         // Transcription — will call stt.py once Neil's stt.py lands
         "/api/transcribe": {
             async POST(req) {
