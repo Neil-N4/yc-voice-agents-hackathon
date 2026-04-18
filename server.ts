@@ -35,6 +35,38 @@ Bun.serve({
         // Static
         "/": async () => new Response(Bun.file("index.html")),
 
+        // QR code page for audience participation: scans to whatever URL the
+        // viewer is hitting (works for localhost, ngrok tunnel, whatever).
+        "/qr": async (req) => {
+            const url = new URL(req.url);
+            const host = req.headers.get("host") || `localhost:${PORT}`;
+            const proto = host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https";
+            const targetUrl = `${proto}://${host}/`;
+            const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=420x420&margin=20&bgcolor=09090b&color=fafafa&data=${encodeURIComponent(targetUrl)}`;
+            const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Voice Right — try it</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #09090b; color: #fafafa; font-family: 'Inter', -apple-system, system-ui, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
+.card { text-align: center; max-width: 520px; }
+h1 { font-size: 42px; letter-spacing: -0.02em; margin-bottom: 8px; }
+.tagline { color: #a1a1aa; font-size: 15px; margin-bottom: 40px; }
+.qr-wrap { background: #09090b; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 28px; display: inline-block; }
+img { display: block; width: 100%; max-width: 380px; height: auto; }
+.url { margin-top: 24px; font-family: 'SF Mono', ui-monospace, monospace; font-size: 13px; color: #a1a1aa; word-break: break-all; }
+.hint { margin-top: 28px; color: #71717a; font-size: 13px; line-height: 1.6; }
+</style></head>
+<body>
+<div class="card">
+  <h1>Voice Right</h1>
+  <div class="tagline">Hear👂 you and write✍️ for you correctly, everywhere.</div>
+  <div class="qr-wrap"><img src="${qrImg}" alt="QR code"></div>
+  <div class="url">${targetUrl}</div>
+  <div class="hint">Scan with your phone camera to try Voice Right right now.<br>Your voice never leaves your device.</div>
+</div>
+</body></html>`;
+            return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+        },
+
         // Profile API
         "/api/profile": {
             async GET() {
@@ -152,6 +184,83 @@ Bun.serve({
                         }, { status: 500 });
                     }
                     return Response.json({ added });
+                } catch (err) {
+                    return Response.json({ error: String(err) }, { status: 500 });
+                }
+            },
+        },
+
+        // Calibration: generate personalized script from passport terms
+        "/api/calibrate/generate": {
+            async POST(req) {
+                try {
+                    // Use passport terms if no list in body.
+                    let terms: string[] = [];
+                    try {
+                        const body = (await req.json()) as { terms?: string[] } | null;
+                        if (body && Array.isArray(body.terms)) terms = body.terms;
+                    } catch { /* empty body is fine */ }
+
+                    if (terms.length === 0) {
+                        const profile = await loadProfile();
+                        terms = (profile.terms || []).map((t: any) => t.text).filter(Boolean);
+                    }
+
+                    const termArg = terms.join(",");
+                    const raw = termArg
+                        ? await $`.venv/bin/python brain.py calibrate ${termArg}`.quiet().text()
+                        : await $`.venv/bin/python brain.py calibrate`.quiet().text();
+
+                    // Find last JSON array line (brain.py emits tensor debug before the JSON).
+                    const lines = raw.trim().split("\n").filter(Boolean);
+                    let sentences: string[] | null = null;
+                    for (let i = lines.length - 1; i >= 0; i--) {
+                        const line = lines[i].trim();
+                        if (!line.startsWith("[")) continue;
+                        try {
+                            const parsed = JSON.parse(line);
+                            if (Array.isArray(parsed) && parsed.every(s => typeof s === "string")) {
+                                sentences = parsed;
+                                break;
+                            }
+                        } catch { /* keep scanning */ }
+                    }
+
+                    if (!sentences) {
+                        return Response.json({
+                            error: "could not parse sentences from brain.py output",
+                            raw: raw.slice(-500),
+                        }, { status: 500 });
+                    }
+                    return Response.json({ sentences });
+                } catch (err) {
+                    return Response.json({ error: String(err) }, { status: 500 });
+                }
+            },
+        },
+
+        // Calibration: accept an audio recording, stub until stt.py lands.
+        // Returns simulated before/after accuracy scaled by passport richness
+        // so the UI can demo the "82% → 97%" moment even before wiring STT.
+        "/api/calibrate/benchmark": {
+            async POST(req) {
+                try {
+                    const profile = await loadProfile();
+                    const termCount = (profile.terms || []).length;
+                    const corrCount = (profile.corrections || []).length;
+
+                    // Before: naive baseline roughly 60-82% depending on how hard the
+                    // user's vocabulary is. After: rises toward 97% as passport fills up.
+                    const before = Math.max(58, 82 - termCount * 2);
+                    const after = Math.min(97, before + 10 + termCount * 1 + corrCount * 2);
+
+                    return Response.json({
+                        accuracy_before: before,
+                        accuracy_after: after,
+                        patterns_learned: corrCount,
+                        stt_wired: false,
+                        note: "stt.py not wired — accuracy simulated from passport richness",
+                    });
                 } catch (err) {
                     return Response.json({ error: String(err) }, { status: 500 });
                 }

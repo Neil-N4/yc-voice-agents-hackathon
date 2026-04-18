@@ -19,30 +19,40 @@ This file is also exposed as `AGENTS.md` (Codex convention) and `.cursorrules` (
 - **STT:** dual STT pipeline (see Jenny's prior `voice-passport-prototype` for reference patterns only — NO code copying, fresh build only per hackathon rules)
 - **Runtime:** TBD — likely Python for Cactus integration
 
-## Workflow (MAIN-ONLY — updated 2026-04-18 evening)
+## Workflow (BRANCH + DIRECT MERGE — updated 2026-04-18 evening)
 
-**Hard rule: commit directly to `main`. No feature branches. No pull requests. No compare views.** Every change — code, docs, config — lands on `main` in a single commit, pushed immediately. Hackathon-speed override. Applies to every contributor and every AI session in this repo.
+**Rule: build on a feature branch, push the branch to GitHub, merge to `main` directly. No pull requests, no review gate — hackathon speed.** Applies to every contributor and every AI session in this repo.
 
-**Exact flow:**
+**Exact flow for any build / change:**
 
 ```bash
+# start new work
 cd ~/yc-voice-agents-hackathon
-git pull origin main
-# make the change
+git checkout main && git pull origin main
+git checkout -b jenny/<feature>         # feature-descriptive name
+
+# build + commit as you go
 git add <files>
 git commit -m "..."
+
+# when ready to land (or hit a milestone)
+git push -u origin jenny/<feature>      # visible to Neil on GitHub
+git checkout main
+git pull origin main                     # sync in case main moved
+git merge --no-ff jenny/<feature> -m "merge: <one-line summary>"
 git push origin main
+git checkout jenny/<feature>             # return to feature branch for follow-up
 ```
 
-**Per-turn discipline (for AI sessions):** every time the user sends an input, the AI session must (a) pull latest `main` before substantive work, and (b) report the current branch on the first line of its reply (`**Branch: \`<name>\`**`). With main-only, this will always say `main`.
+**Per-turn discipline (for AI sessions):** every time the user sends an input, the AI session must (a) pull latest `main` before substantive work, and (b) report the current branch on the first line of its reply (`**Branch: \`<name>\`**`).
 
 **Rules that still apply:**
 - Never commit secrets (`.env`, API keys, tokens). `git status` before every `git add`.
 - Never force-push or rewrite `main`.
-- Pull before push. If `git push` rejects (you're behind), `git pull --rebase origin main` then push.
+- If `git merge` hits a conflict, resolve locally before pushing. Don't force.
+- Don't merge Neil's branches (`neil/*`) or ops branches (`ops/*`) without verbal OK.
+- Branches are cheap — one per feature or per commit is fine. Delete after merge is optional.
 - Verbal coordination for overlapping changes. If two people edit the same file simultaneously, talk it out — don't fight git.
-
-**Worktrees are obsolete under main-only.** `~/yc-jenny` and `~/yc-ops` worktrees that were set up for branch isolation no longer serve a purpose. Recommend collapsing to a single working directory (`~/yc-voice-agents-hackathon`).
 
 ## Shared memory across AI sessions (hackathon scratchpad)
 
@@ -60,6 +70,48 @@ Initials: `jr` (Jenny), `nb` (Neil), `cc` (Claude Code), `cx` (Codex), `cs` (Cur
 **The SYNC shortcut.** If the user types `SYNC` (any casing), re-read the full set: `~/shared-memory/scratchpad.md`, `~/shared-memory/neil-blockers.md`, `~/Desktop/0418/hackathon-strategy/hackathon-strategy.md`, `~/Desktop/0418/jenny-action-plan.md`. Return a terse summary: state + blockers + next action.
 
 **Don't dump verbose logs here.** One-line milestones only. If it needs more than a line, write it in a proper design doc or the scratchpad's structured sections.
+
+## Team coordination (Jenny+Claude Code ↔ Neil+Codex)
+
+Both agents read this file (Codex reads `AGENTS.md`, which is symlinked here). Keep it tool-agnostic.
+
+**File ownership — don't edit your teammate's files without verbal OK:**
+
+| Owner | Files |
+|---|---|
+| Neil | `stt.py`, audio fixtures, `/api/transcribe` route |
+| Jenny | `brain.py`, `index.html`, `/api/style`, `/api/screenshot-to-terms`, `/api/correction`, `/api/calibrate/*` routes |
+| Jenny seeds, either can extend | `voice-right.md`, `data/schema.md`, `data/profiles/*.template` |
+| Shared | `CLAUDE.md`/`AGENTS.md`, `.gitignore`, `.env.example`, `server.ts` skeleton |
+
+**Branch naming:**
+- Jenny → `jenny/<feature>`
+- Neil → `neil/<feature>`
+- Merge only your own branches to main.
+
+**Interface contracts — lock before parallel work.** Current contracts (as of 2026-04-18 evening):
+
+```python
+# brain.py (Jenny owns)
+extract_terms_from_screenshot(image_path: str) -> list[str]
+style_transfer(text: str, app: str, passport: VoicePassport, preferences_md: str = "") -> str
+capture_correction(original: str, edited: str, passport: VoicePassport) -> list[Correction]
+reconcile_stt(parakeet: str, whisper_p1: str, whisper_p2: str, passport: VoicePassport) -> str
+
+# stt.py (Neil owns — expected signature, lock before building)
+transcribe(audio_path: str, passport: VoicePassport) -> dict
+    # returns {"parakeet": str, "whisper_pass1": str, "whisper_pass2": str, "confidence": float}
+```
+
+Changing a contract mid-build: tell the other side verbally first.
+
+**Conflict resolution on shared files** (`CLAUDE.md`, `.gitignore`, `data/schema.md`, etc.): keep both sides' changes (additive). Announce the merge verbally within 5 min. Never silently overwrite.
+
+**Blocker channel:** Neil writes to `~/shared-memory/neil-blockers.md` when stuck. Jenny checks during breaks.
+
+**Push cadence:** push feature branches every ~30 min. The other side seeing your WIP on GitHub is how async progress visibility works.
+
+**When confused, go verbal.** You're co-located. 10 sec of verbal > 20 min of async guessing.
 
 - **gstack skills:** fully wired. Common flows:
   - `/checkpoint` — save progress (syncs to Drive via MCP)

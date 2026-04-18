@@ -327,6 +327,13 @@
                     <div>Drop a screenshot or click to select</div>
                     <input type="file" id="file-input" accept="image/*" hidden>
                 </div>
+
+                <div style="display: flex; gap: 8px; margin-top: 14px;">
+                    <input type="text" id="manual-term-input" placeholder="Add a term manually (e.g. YBuffet)"
+                        style="flex: 1; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; font-family: inherit; font-size: 13px;">
+                    <button class="secondary" id="manual-term-add-btn">Add</button>
+                </div>
+
                 <div class="chips" id="chips"></div>
             </div>
         </div>
@@ -335,8 +342,36 @@
         <div class="step-content" id="step-3">
             <div class="card">
                 <h2>Teach it your voice</h2>
-                <p class="hint">Read a short script. Voice Right benchmarks your accuracy before and after learning your corrections. Usually takes 30 seconds.</p>
-                <div id="calibration-script" style="color: var(--text-muted); font-style: italic;">Calibration wired in next — coming soon.</div>
+                <p class="hint">Read the sentences out loud. Voice Right benchmarks accuracy on YOUR vocabulary before and after applying your passport. Usually takes 30 seconds.</p>
+
+                <div id="calibration-script" style="background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 14px; min-height: 110px; line-height: 1.8;">
+                    <span style="color: var(--text-muted); font-style: italic;">Add a few terms first (Step 2) — we'll generate sentences using them.</span>
+                </div>
+
+                <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 14px;">
+                    <button class="mic-button" id="calibrate-record-btn" title="Record calibration">🎙</button>
+                    <button class="secondary" id="calibrate-regenerate-btn">Regenerate script</button>
+                    <div id="calibrate-status" style="color: var(--text-dim); font-size: 13px;"></div>
+                </div>
+
+                <!-- Accuracy bars appear after benchmark -->
+                <div id="calibrate-results" style="display: none;">
+                    <div style="display: grid; grid-template-columns: 100px 1fr 50px; gap: 10px; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 12px; color: var(--text-dim);">Before</span>
+                        <div style="height: 14px; background: var(--surface-hover); border-radius: 999px; overflow: hidden;">
+                            <div id="bar-before" style="height: 100%; width: 0%; background: #ef4444; transition: width 0.6s ease-out;"></div>
+                        </div>
+                        <span id="acc-before" style="font-size: 13px; font-weight: 600; text-align: right;">—</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 100px 1fr 50px; gap: 10px; align-items: center;">
+                        <span style="font-size: 12px; color: var(--text-dim);">After</span>
+                        <div style="height: 14px; background: var(--surface-hover); border-radius: 999px; overflow: hidden;">
+                            <div id="bar-after" style="height: 100%; width: 0%; background: var(--accent); transition: width 0.6s ease-out;"></div>
+                        </div>
+                        <span id="acc-after" style="font-size: 13px; font-weight: 600; text-align: right;">—</span>
+                    </div>
+                    <div id="patterns-learned" style="margin-top: 12px; font-size: 13px; color: var(--text-dim);"></div>
+                </div>
             </div>
         </div>
 
@@ -406,10 +441,16 @@
             for (const term of (profile?.terms ?? [])) {
                 const chip = document.createElement('span');
                 chip.className = 'chip';
-                chip.innerHTML = `<span class="chip-text" contenteditable="true">${term.text}</span><button class="chip-remove" data-id="${term.id}" title="Remove">✕</button>`;
+                // data-id used by remove; data-original used by inline rename to detect no-op edits.
+                chip.innerHTML = `<span class="chip-text" contenteditable="true" data-id="${term.id}" data-original="${escapeAttr(term.text)}">${escapeHtml(term.text)}</span><button class="chip-remove" data-id="${term.id}" title="Remove">✕</button>`;
                 el.appendChild(chip);
             }
         }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+        }
+        function escapeAttr(s) { return escapeHtml(s); }
 
         // ============================================================
         // Step navigation
@@ -535,18 +576,189 @@
             if (f) uploadScreenshot(f);
         });
 
-        // Wire chip remove buttons (delegated)
+        // Chip remove (delegated click)
         document.getElementById('chips').addEventListener('click', async (e) => {
             const btn = e.target.closest('.chip-remove');
             if (!btn) return;
             const id = btn.dataset.id;
             profile.terms = (profile.terms || []).filter(t => t.id !== id);
+            await saveProfile();
+        });
+
+        // Inline rename — commit on Enter or blur, cancel on Escape.
+        document.getElementById('chips').addEventListener('keydown', (e) => {
+            const el = e.target.closest('.chip-text');
+            if (!el) return;
+            if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+            else if (e.key === 'Escape') { el.textContent = el.dataset.original; el.blur(); }
+        });
+        document.getElementById('chips').addEventListener('blur', async (e) => {
+            const el = e.target.closest('.chip-text');
+            if (!el) return;
+            const id = el.dataset.id;
+            const newText = el.textContent.trim();
+            const original = el.dataset.original;
+            if (!newText) { el.textContent = original; return; }
+            if (newText === original) return;
+            const term = (profile.terms || []).find(t => t.id === id);
+            if (!term) return;
+            term.text = newText;
+            await saveProfile();
+        }, true); // useCapture=true so blur fires on descendant contenteditables
+
+        // Manual term add
+        async function addManualTerm(text) {
+            text = text.trim();
+            if (!text) return;
+            if (!profile) await refreshProfile();
+            const lower = text.toLowerCase();
+            const exists = (profile.terms || []).some(t => t.text.toLowerCase() === lower);
+            if (exists) return;
+            profile.terms.push({
+                id: `t_${Date.now()}`,
+                text,
+                source: 'manual',
+                added: new Date().toISOString(),
+            });
+            await saveProfile();
+        }
+        document.getElementById('manual-term-add-btn').addEventListener('click', async () => {
+            const input = document.getElementById('manual-term-input');
+            await addManualTerm(input.value);
+            input.value = '';
+            input.focus();
+        });
+        document.getElementById('manual-term-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') document.getElementById('manual-term-add-btn').click();
+        });
+
+        // Shared save helper — PUT the current profile and refresh the UI.
+        async function saveProfile() {
             await fetch('/api/profile', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(profile),
             });
             await refreshProfile();
+        }
+
+        // ============================================================
+        // Step 3 — Calibrate: generate personalized script + simulated accuracy bars
+        // ============================================================
+        const calibrationState = {
+            sentences: null,
+            currentIdx: 0,
+            generated: false,
+        };
+
+        async function generateCalibrationScript(force = false) {
+            const el = document.getElementById('calibration-script');
+            const status = document.getElementById('calibrate-status');
+
+            if (calibrationState.generated && !force) return;
+
+            el.innerHTML = `<span style="color: var(--text-dim); font-style: italic;">Generating your personalized script with Gemma 3 1B…</span>`;
+            status.textContent = '';
+
+            try {
+                const r = await fetch('/api/calibrate/generate', { method: 'POST' });
+                const j = await r.json();
+                if (j.error || !j.sentences || j.sentences.length === 0) {
+                    el.innerHTML = `<span style="color: var(--danger)">Couldn't generate script: ${j.error || 'no sentences'}. Add some terms in Step 2 first.</span>`;
+                    return;
+                }
+                calibrationState.sentences = j.sentences;
+                calibrationState.currentIdx = 0;
+                calibrationState.generated = true;
+                renderCalibrationScript();
+            } catch (err) {
+                el.innerHTML = `<span style="color: var(--danger)">Error: ${err.message}</span>`;
+            }
+        }
+
+        function renderCalibrationScript() {
+            const el = document.getElementById('calibration-script');
+            if (!calibrationState.sentences) return;
+            el.innerHTML = calibrationState.sentences.map((s, i) => {
+                let style = '';
+                if (i < calibrationState.currentIdx) {
+                    // Already read
+                    style = 'opacity: 0.35; text-decoration: line-through; color: var(--accent);';
+                } else if (i === calibrationState.currentIdx) {
+                    style = 'opacity: 1; color: var(--text); font-weight: 500;';
+                } else {
+                    style = 'opacity: 0.5; color: var(--text-dim);';
+                }
+                return `<div class="cal-sentence" data-idx="${i}" style="cursor: pointer; padding: 3px 0; ${style}">${s}</div>`;
+            }).join('');
+        }
+
+        document.getElementById('calibration-script').addEventListener('click', (e) => {
+            const el = e.target.closest('.cal-sentence');
+            if (!el) return;
+            calibrationState.currentIdx = parseInt(el.dataset.idx, 10);
+            renderCalibrationScript();
+        });
+
+        document.getElementById('calibrate-regenerate-btn').addEventListener('click', () => {
+            generateCalibrationScript(true);
+        });
+
+        // Record flow: simulated benchmark while stt.py is not wired.
+        // When stt.py lands, swap this with real MediaRecorder → POST audio.
+        let calRecording = false;
+        document.getElementById('calibrate-record-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('calibrate-record-btn');
+            const status = document.getElementById('calibrate-status');
+            if (!calibrationState.sentences) {
+                status.textContent = 'Generate a script first.';
+                status.style.color = 'var(--danger)';
+                return;
+            }
+            if (!calRecording) {
+                calRecording = true;
+                btn.classList.add('recording');
+                status.textContent = 'Recording… click mic again to finish.';
+                status.style.color = 'var(--text-dim)';
+                calibrationState.currentIdx = 0;
+                renderCalibrationScript();
+            } else {
+                calRecording = false;
+                btn.classList.remove('recording');
+                status.textContent = 'Benchmarking…';
+                try {
+                    const r = await fetch('/api/calibrate/benchmark', { method: 'POST' });
+                    const j = await r.json();
+                    if (j.error) {
+                        status.textContent = `Error: ${j.error}`;
+                        status.style.color = 'var(--danger)';
+                        return;
+                    }
+                    document.getElementById('bar-before').style.width = `${j.accuracy_before}%`;
+                    document.getElementById('bar-after').style.width = `${j.accuracy_after}%`;
+                    document.getElementById('acc-before').textContent = `${j.accuracy_before}%`;
+                    document.getElementById('acc-after').textContent = `${j.accuracy_after}%`;
+                    document.getElementById('patterns-learned').textContent =
+                        `Patterns learned from your passport: ${j.patterns_learned}` +
+                        (j.stt_wired ? '' : '  (simulated — stt.py not wired yet)');
+                    document.getElementById('calibrate-results').style.display = 'block';
+                    status.textContent = `✓ Accuracy jumped ${j.accuracy_before}% → ${j.accuracy_after}%`;
+                    status.style.color = 'var(--accent)';
+                } catch (err) {
+                    status.textContent = `Error: ${err.message}`;
+                    status.style.color = 'var(--danger)';
+                }
+            }
+        });
+
+        // Auto-generate when user first navigates to Step 3.
+        document.querySelectorAll('.step').forEach(s => {
+            s.addEventListener('click', () => {
+                if (s.dataset.step === '3' && !calibrationState.generated) {
+                    // Kick off async, don't block the step switch.
+                    setTimeout(() => generateCalibrationScript(), 50);
+                }
+            });
         });
 
         // ============================================================

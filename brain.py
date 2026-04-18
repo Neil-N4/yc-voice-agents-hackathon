@@ -34,7 +34,8 @@ except ImportError:
 
 PROFILE_PATH = Path("data/profiles/default.voicepassport.json")
 PREFERENCES_PATH = Path("voice-right.md")
-GEMMA_4_E4B = "google/gemma-4-E4B-it"
+GEMMA_4_E4B = "google/gemma-4-E4B-it"    # primary brain (vision, style transfer, reconciliation)
+GEMMA_3_1B = "google/gemma-3-1b-it"      # lighter / less chain-of-thoughty — for text gen like calibration
 
 
 # ============================================================
@@ -132,7 +133,8 @@ def load_preferences_md(path: Path = PREFERENCES_PATH) -> str:
 # Gemma 4 E4B model lifecycle
 # ============================================================
 
-_model_handle: int | None = None
+_model_handle: int | None = None      # Gemma 4 E4B (primary, multimodal)
+_light_handle: int | None = None      # Gemma 3 1B (text-only, less verbose)
 
 
 def load_gemma() -> int:
@@ -151,11 +153,26 @@ def load_gemma() -> int:
     return _model_handle
 
 
+def load_gemma_light() -> int:
+    """Load Gemma 3 1B — smaller, less chain-of-thoughty, better for simple text gen."""
+    global _light_handle
+    if not CACTUS_AVAILABLE:
+        raise RuntimeError("Cactus not available")
+    if _light_handle is None:
+        weights = ensure_model(GEMMA_3_1B)
+        _light_handle = cactus_init(str(weights), None, False)
+    return _light_handle
+
+
 def unload_gemma() -> None:
-    global _model_handle
-    if _model_handle is not None and CACTUS_AVAILABLE:
-        cactus_destroy(_model_handle)
-        _model_handle = None
+    global _model_handle, _light_handle
+    if CACTUS_AVAILABLE:
+        if _model_handle is not None:
+            cactus_destroy(_model_handle)
+            _model_handle = None
+        if _light_handle is not None:
+            cactus_destroy(_light_handle)
+            _light_handle = None
 
 
 # ============================================================
@@ -230,8 +247,88 @@ def extract_style_from_content(content: str, app: str) -> AppStyle:
 
 
 def generate_calibration_script(terms: list[str], n_sentences: int = 5) -> list[str]:
-    """Generate personalized sentences using the user's vocabulary."""
-    raise NotImplementedError("TODO: build calibration script generator")
+    """Generate personalized sentences using the user's vocabulary.
+
+    Each sentence MUST include at least one passport term so we can benchmark
+    STT accuracy on the terms that matter to this user (not generic English).
+    """
+    if not CACTUS_AVAILABLE:
+        raise RuntimeError("Cactus not available — generate_calibration_script requires Gemma 4 E4B")
+
+    if not terms:
+        # Fall back to generic calibration sentences when the passport is empty.
+        return [
+            "The quick brown fox jumps over the lazy dog.",
+            "Pack my box with five dozen liquor jugs.",
+            "How razorback jumping frogs can level six piqued gymnasts.",
+            "Sphinx of black quartz, judge my vow.",
+            "The five boxing wizards jump quickly.",
+        ][:n_sentences]
+
+    model = load_gemma_light()   # Gemma 3 1B is more compliant for simple text gen
+
+    # Keep the prompt compact: list up to ~15 terms to avoid bloat.
+    term_list = ", ".join(terms[:15])
+
+    user_prompt = (
+        f"Write {n_sentences} short natural sentences (one per line, no numbering, "
+        f"no explanation, under 12 words each) using these terms: {term_list}."
+    )
+    messages = json.dumps([{"role": "user", "content": user_prompt}])
+    options = json.dumps({"max_tokens": 350, "temperature": 0.7})
+    result = json.loads(cactus_complete(model, messages, options, None, None))
+
+    if not result.get("success"):
+        raise RuntimeError(f"Gemma 3 1B calibration-script gen failed: {result.get('error')}")
+
+    raw = result["response"].strip()
+
+    # Gemma often runs sentences together in one paragraph. Split on period/exclamation/question
+    # followed by whitespace + capital, then also split on newlines.
+    import re
+    # Strip leading preamble like "Here are 5 sentences:" up to the first newline.
+    first_newline = raw.find("\n")
+    if first_newline != -1 and raw[:first_newline].strip().lower().startswith(("here are", "sure", "okay")):
+        raw = raw[first_newline:].strip()
+
+    # Split on sentence boundaries, keeping punctuation.
+    candidates: list[str] = []
+    for chunk in re.split(r"[\r\n]+", raw):
+        # Also split run-on paragraphs on ". " followed by capital letter.
+        for s in re.split(r"(?<=[.!?])\s+(?=[A-Z])", chunk):
+            candidates.append(s)
+
+    term_lower = {t.lower() for t in terms}
+    sentences: list[str] = []
+    for s in candidates:
+        s = s.strip().strip("-•*·").strip().strip('"').strip("'")
+        if not s or len(s) < 6:
+            continue
+        # Drop leading numbering like "1." or "2)".
+        if s[0].isdigit():
+            s = s.lstrip("0123456789.)- ").strip()
+        # Skip meta / thinking / empty headers.
+        if s.startswith("<|") or s.startswith("**") or s.endswith(":"):
+            continue
+        # Prefer sentences that actually use at least one passport term (case-insensitive substring).
+        if term_lower and not any(t in s.lower() for t in term_lower):
+            continue
+        sentences.append(s)
+        if len(sentences) >= n_sentences:
+            break
+
+    # If the term-filter was too strict and we came up empty, keep any sensible sentences.
+    if not sentences:
+        for s in candidates:
+            s = s.strip().strip("-•*·").strip().strip('"').strip("'")
+            if s and len(s) > 6 and not s.startswith("<|") and not s.startswith("**"):
+                if s[0].isdigit():
+                    s = s.lstrip("0123456789.)- ").strip()
+                sentences.append(s)
+                if len(sentences) >= n_sentences:
+                    break
+
+    return sentences
 
 
 def reconcile_stt(parakeet: str, whisper_pass1: str, whisper_pass2: str,
@@ -373,6 +470,20 @@ def _cli() -> None:
             # Output JSON so the server can parse reliably (vs. line-by-line which
             # can be corrupted by Cactus stderr [WARN] messages).
             print(json.dumps(terms))
+        finally:
+            unload_gemma()
+
+    elif cmd == "calibrate":
+        # Usage: python brain.py calibrate                   # use passport terms
+        #        python brain.py calibrate "term1,term2"     # explicit term list
+        if len(sys.argv) >= 3:
+            terms = [t.strip() for t in sys.argv[2].split(",") if t.strip()]
+        else:
+            passport = load_passport()
+            terms = [t.text for t in passport.terms]
+        try:
+            sentences = generate_calibration_script(terms)
+            print(json.dumps(sentences))
         finally:
             unload_gemma()
 
