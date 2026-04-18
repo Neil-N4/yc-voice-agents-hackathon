@@ -21,9 +21,10 @@ This file is also exposed as `AGENTS.md` (Codex convention) and `.cursorrules` (
 
 ## Workflow
 
-- **Branches:** ALWAYS branch-and-PR. Never push directly to `main`, even for boilerplate or config.
+- **Branches (default):** branch-and-PR for regular work.
   - Jenny's branches: `jenny/<feature>` (e.g. `jenny/scaffold`, `jenny/brain`, `jenny/demo-ui`)
   - Neil's branches: follow his own convention
+- **Jenny's exception:** Jenny may push directly to `main` in this repo when branch-and-PR would slow the hackathon down (bootstrap commits, crunch-time fixes, or merging her own work with verbal approval). This applies to this repo only. Default remains branch-and-PR.
 - **Commits:** commit continuously on your branch — small logical commits, pushed often. Aggregate into a PR when the feature is mergeable.
 - **gstack skills:** fully wired. Common flows:
   - `/checkpoint` — save progress (syncs to Drive via MCP)
