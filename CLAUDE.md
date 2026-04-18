@@ -23,6 +23,8 @@ This file is also exposed as `AGENTS.md` (Codex convention) and `.cursorrules` (
 
 **Hard rule: ALWAYS branch. ALWAYS commit to the branch first. NEVER commit directly to `main`.** No exceptions — not for doc tweaks, not for one-line fixes, not for bootstrap. Every change goes on a branch first. This rule is global for this repo and applies to every contributor and every AI session.
 
+**Per-turn discipline (for AI sessions):** every time the user sends an input, the AI session must (a) pull the latest `main` before doing substantive work, and (b) report the current branch on the first line of its reply (format: `**Branch: \`<name>\`**`). Multiple Claude sessions run on this repo in parallel — this discipline keeps every session honest about local state.
+
 **Steps for every new feature:**
 
 1. **Sync latest `main` first.** Run `git checkout main && git pull origin main` BEFORE creating a branch. Never branch from stale state.
