@@ -19,30 +19,40 @@ This file is also exposed as `AGENTS.md` (Codex convention) and `.cursorrules` (
 - **STT:** dual STT pipeline (see Jenny's prior `voice-passport-prototype` for reference patterns only — NO code copying, fresh build only per hackathon rules)
 - **Runtime:** TBD — likely Python for Cactus integration
 
-## Workflow (MAIN-ONLY — updated 2026-04-18 evening)
+## Workflow (BRANCH + DIRECT MERGE — updated 2026-04-18 evening)
 
-**Hard rule: commit directly to `main`. No feature branches. No pull requests. No compare views.** Every change — code, docs, config — lands on `main` in a single commit, pushed immediately. Hackathon-speed override. Applies to every contributor and every AI session in this repo.
+**Rule: build on a feature branch, push the branch to GitHub, merge to `main` directly. No pull requests, no review gate — hackathon speed.** Applies to every contributor and every AI session in this repo.
 
-**Exact flow:**
+**Exact flow for any build / change:**
 
 ```bash
+# start new work
 cd ~/yc-voice-agents-hackathon
-git pull origin main
-# make the change
+git checkout main && git pull origin main
+git checkout -b jenny/<feature>         # feature-descriptive name
+
+# build + commit as you go
 git add <files>
 git commit -m "..."
+
+# when ready to land (or hit a milestone)
+git push -u origin jenny/<feature>      # visible to Neil on GitHub
+git checkout main
+git pull origin main                     # sync in case main moved
+git merge --no-ff jenny/<feature> -m "merge: <one-line summary>"
 git push origin main
+git checkout jenny/<feature>             # return to feature branch for follow-up
 ```
 
-**Per-turn discipline (for AI sessions):** every time the user sends an input, the AI session must (a) pull latest `main` before substantive work, and (b) report the current branch on the first line of its reply (`**Branch: \`<name>\`**`). With main-only, this will always say `main`.
+**Per-turn discipline (for AI sessions):** every time the user sends an input, the AI session must (a) pull latest `main` before substantive work, and (b) report the current branch on the first line of its reply (`**Branch: \`<name>\`**`).
 
 **Rules that still apply:**
 - Never commit secrets (`.env`, API keys, tokens). `git status` before every `git add`.
 - Never force-push or rewrite `main`.
-- Pull before push. If `git push` rejects (you're behind), `git pull --rebase origin main` then push.
+- If `git merge` hits a conflict, resolve locally before pushing. Don't force.
+- Don't merge Neil's branches (`neil/*`) or ops branches (`ops/*`) without verbal OK.
+- Branches are cheap — one per feature or per commit is fine. Delete after merge is optional.
 - Verbal coordination for overlapping changes. If two people edit the same file simultaneously, talk it out — don't fight git.
-
-**Worktrees are obsolete under main-only.** `~/yc-jenny` and `~/yc-ops` worktrees that were set up for branch isolation no longer serve a purpose. Recommend collapsing to a single working directory (`~/yc-voice-agents-hackathon`).
 
 ## Shared memory across AI sessions (hackathon scratchpad)
 
