@@ -71,6 +71,48 @@ Initials: `jr` (Jenny), `nb` (Neil), `cc` (Claude Code), `cx` (Codex), `cs` (Cur
 
 **Don't dump verbose logs here.** One-line milestones only. If it needs more than a line, write it in a proper design doc or the scratchpad's structured sections.
 
+## Team coordination (Jenny+Claude Code ↔ Neil+Codex)
+
+Both agents read this file (Codex reads `AGENTS.md`, which is symlinked here). Keep it tool-agnostic.
+
+**File ownership — don't edit your teammate's files without verbal OK:**
+
+| Owner | Files |
+|---|---|
+| Neil | `stt.py`, audio fixtures, `/api/transcribe` route |
+| Jenny | `brain.py`, `index.html`, `/api/style`, `/api/screenshot-to-terms`, `/api/correction`, `/api/calibrate/*` routes |
+| Jenny seeds, either can extend | `voice-right.md`, `data/schema.md`, `data/profiles/*.template` |
+| Shared | `CLAUDE.md`/`AGENTS.md`, `.gitignore`, `.env.example`, `server.ts` skeleton |
+
+**Branch naming:**
+- Jenny → `jenny/<feature>`
+- Neil → `neil/<feature>`
+- Merge only your own branches to main.
+
+**Interface contracts — lock before parallel work.** Current contracts (as of 2026-04-18 evening):
+
+```python
+# brain.py (Jenny owns)
+extract_terms_from_screenshot(image_path: str) -> list[str]
+style_transfer(text: str, app: str, passport: VoicePassport, preferences_md: str = "") -> str
+capture_correction(original: str, edited: str, passport: VoicePassport) -> list[Correction]
+reconcile_stt(parakeet: str, whisper_p1: str, whisper_p2: str, passport: VoicePassport) -> str
+
+# stt.py (Neil owns — expected signature, lock before building)
+transcribe(audio_path: str, passport: VoicePassport) -> dict
+    # returns {"parakeet": str, "whisper_pass1": str, "whisper_pass2": str, "confidence": float}
+```
+
+Changing a contract mid-build: tell the other side verbally first.
+
+**Conflict resolution on shared files** (`CLAUDE.md`, `.gitignore`, `data/schema.md`, etc.): keep both sides' changes (additive). Announce the merge verbally within 5 min. Never silently overwrite.
+
+**Blocker channel:** Neil writes to `~/shared-memory/neil-blockers.md` when stuck. Jenny checks during breaks.
+
+**Push cadence:** push feature branches every ~30 min. The other side seeing your WIP on GitHub is how async progress visibility works.
+
+**When confused, go verbal.** You're co-located. 10 sec of verbal > 20 min of async guessing.
+
 - **gstack skills:** fully wired. Common flows:
   - `/checkpoint` — save progress (syncs to Drive via MCP)
   - `/office-hours` — design doc sessions (syncs to Drive via MCP)
