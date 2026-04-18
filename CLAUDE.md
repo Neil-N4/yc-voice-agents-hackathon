@@ -66,6 +66,23 @@ Multiple AI agents (Claude Code, Cursor, Codex, etc.) may run simultaneously in 
 
 5. **Push often, trust origin.** Local state is disposable. Commit small, push every ~15 min. `origin/<branch>` is the source of truth.
 
+## Shared memory across AI sessions (hackathon scratchpad)
+
+State that doesn't belong in git — progress, blockers, decisions made mid-build, "heads up for the next AI" notes — lives at `~/shared-memory/scratchpad.md`. This is the async channel between parallel terminals.
+
+**Read at session start.** First substantive action in every new Claude Code session on this repo: `tail -60 ~/shared-memory/scratchpad.md`. Load into context. Catches anything other terminals recorded since your last turn.
+
+**Write after every milestone.** When you finish a merge, push, land a feature, hit a blocker, or lock a decision, append one line to the end of the file:
+```
+## HH:MM — <one-line summary> (<initials>@<branch>)
+```
+Example: `## 15:20 — ops/memory-sync merged. Scratchpad auto-read rule live. (cc@ops)`
+Initials: `jr` (Jenny), `nb` (Neil), `cc` (Claude Code), `cx` (Codex), `cs` (Cursor).
+
+**The SYNC shortcut.** If the user types `SYNC` (any casing), re-read the full set: `~/shared-memory/scratchpad.md`, `~/shared-memory/neil-blockers.md`, `~/Desktop/0418/hackathon-strategy/hackathon-strategy.md`, `~/Desktop/0418/jenny-action-plan.md`. Return a terse summary: state + blockers + next action.
+
+**Don't dump verbose logs here.** One-line milestones only. If it needs more than a line, write it in a proper design doc or the scratchpad's structured sections.
+
 - **gstack skills:** fully wired. Common flows:
   - `/checkpoint` — save progress (syncs to Drive via MCP)
   - `/office-hours` — design doc sessions (syncs to Drive via MCP)
