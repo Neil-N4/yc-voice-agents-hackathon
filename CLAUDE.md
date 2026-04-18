@@ -19,13 +19,70 @@ This file is also exposed as `AGENTS.md` (Codex convention) and `.cursorrules` (
 - **STT:** dual STT pipeline (see Jenny's prior `voice-passport-prototype` for reference patterns only — NO code copying, fresh build only per hackathon rules)
 - **Runtime:** TBD — likely Python for Cactus integration
 
-## Workflow
+## Workflow (STRICT — updated 2026-04-18 late afternoon)
 
-- **Branches (default):** branch-and-PR for regular work.
-  - Jenny's branches: `jenny/<feature>` (e.g. `jenny/scaffold`, `jenny/brain`, `jenny/demo-ui`)
-  - Neil's branches: follow his own convention
-- **Jenny's exception:** Jenny may push directly to `main` in this repo when branch-and-PR would slow the hackathon down (bootstrap commits, crunch-time fixes, or merging her own work with verbal approval). This applies to this repo only. Default remains branch-and-PR.
-- **Commits:** commit continuously on your branch — small logical commits, pushed often. Aggregate into a PR when the feature is mergeable.
+**Hard rule: ALWAYS branch. ALWAYS commit to the branch first. NEVER commit directly to `main`.** No exceptions — not for doc tweaks, not for one-line fixes, not for bootstrap. Every change goes on a branch first. This rule is global for this repo and applies to every contributor and every AI session.
+
+**Per-turn discipline (for AI sessions):** every time the user sends an input, the AI session must (a) pull the latest `main` before doing substantive work, and (b) report the current branch on the first line of its reply (format: `**Branch: \`<name>\`**`). Multiple Claude sessions run on this repo in parallel — this discipline keeps every session honest about local state.
+
+**Steps for every new feature:**
+
+1. **Sync latest `main` first.** Run `git checkout main && git pull origin main` BEFORE creating a branch. Never branch from stale state.
+2. **Create a feature-descriptive branch.** Name it after the feature you're building:
+   - Jenny: `jenny/<feature>` (e.g. `jenny/brain`, `jenny/stt`, `jenny/demo-ui`, `jenny/hybrid-routing`)
+   - Neil: follow his own convention (likely `neil/<feature>`)
+3. **Commit on the branch.** Small logical commits, pushed to origin often (every ~30 min) so teammates can see progress.
+4. **Merge branch → main → push.** `git checkout main && git pull && git merge <branch> && git push origin main`. **No PR required** for Jenny's branches (hackathon speed), but the branch-first step is mandatory.
+
+**Rules that still apply:**
+- Never commit secrets (`.env`, API keys, tokens). `git status` before every `git add`.
+- Never force-push or rewrite `main`.
+- Don't merge Neil's branches to `main` without his verbal OK — he's the repo owner.
+
+**When a PR still makes sense:** optional, only when you want a teammate sanity-check or to document a risky change. Default path = no PR.
+
+## Multi-terminal / multi-AI coordination (hackathon speed mode)
+
+Multiple AI agents (Claude Code, Cursor, Codex, etc.) may run simultaneously in different terminals against this repo. To prevent branch-switch race conditions AND maintain hackathon velocity:
+
+1. **Every contributor (human or AI) works in their own `git worktree`.** Each worktree has its own HEAD, so checkouts and commits never collide between terminals. One-time setup per role:
+   - `git worktree add ~/yc-<role> <branch>` (e.g. `~/yc-brain`, `~/yc-ui`, `~/yc-ops`)
+   - Stay in your worktree. Never `cd` into someone else's.
+
+2. **Branch-first is still mandatory.** Build the feature on a feature branch first (`jenny/<feature>`, `neil/<feature>`, `ops/<task>`). Never commit directly to `main`. Before any `git add` or `git commit`, run `git branch --show-current` and verify it matches your claimed branch.
+
+3. **Any contributor can merge their own finished feature to `main`.** Hackathon speed — no humans-only bottleneck. When your feature is ready:
+   ```
+   git fetch origin
+   git checkout main                      # if this fails "already checked out in another worktree", wait 30s and retry — someone else is merging right now
+   git pull --ff-only origin main
+   git merge --no-ff <your-feature-branch> -m "merge: <one-line summary>"
+   git push origin main
+   git checkout <your-feature-branch>     # return to your lane
+   ```
+   The "main checked out in another worktree" error is git's built-in serialization — it's your signal to wait, not a failure.
+
+4. **Merging someone else's branch to `main` requires verbal OK from its author.** You merge your own work, not your teammate's. Neil's branches need Neil's OK.
+
+5. **Push often, trust origin.** Local state is disposable. Commit small, push every ~15 min. `origin/<branch>` is the source of truth.
+
+## Shared memory across AI sessions (hackathon scratchpad)
+
+State that doesn't belong in git — progress, blockers, decisions made mid-build, "heads up for the next AI" notes — lives at `~/shared-memory/scratchpad.md`. This is the async channel between parallel terminals.
+
+**Read at session start.** First substantive action in every new Claude Code session on this repo: `tail -60 ~/shared-memory/scratchpad.md`. Load into context. Catches anything other terminals recorded since your last turn.
+
+**Write after every milestone.** When you finish a merge, push, land a feature, hit a blocker, or lock a decision, append one line to the end of the file:
+```
+## HH:MM — <one-line summary> (<initials>@<branch>)
+```
+Example: `## 15:20 — ops/memory-sync merged. Scratchpad auto-read rule live. (cc@ops)`
+Initials: `jr` (Jenny), `nb` (Neil), `cc` (Claude Code), `cx` (Codex), `cs` (Cursor).
+
+**The SYNC shortcut.** If the user types `SYNC` (any casing), re-read the full set: `~/shared-memory/scratchpad.md`, `~/shared-memory/neil-blockers.md`, `~/Desktop/0418/hackathon-strategy/hackathon-strategy.md`, `~/Desktop/0418/jenny-action-plan.md`. Return a terse summary: state + blockers + next action.
+
+**Don't dump verbose logs here.** One-line milestones only. If it needs more than a line, write it in a proper design doc or the scratchpad's structured sections.
+
 - **gstack skills:** fully wired. Common flows:
   - `/checkpoint` — save progress (syncs to Drive via MCP)
   - `/office-hours` — design doc sessions (syncs to Drive via MCP)

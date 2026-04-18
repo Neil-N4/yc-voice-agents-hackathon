@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Right</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #09090b;
+            --surface: rgba(255, 255, 255, 0.04);
+            --surface-hover: rgba(255, 255, 255, 0.08);
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #fafafa;
+            --text-dim: #a1a1aa;
+            --text-muted: #52525b;
+            --accent: #10b981;
+            --accent-dim: rgba(16, 185, 129, 0.15);
+            --danger: #ef4444;
+        }
+
+        html, body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', -apple-system, system-ui, sans-serif;
+            font-feature-settings: 'cv11', 'ss01';
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 16px 80px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 760px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            margin-bottom: 4px;
+        }
+        .tagline {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        /* Passport bar */
+        .passport-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 24px;
+            font-size: 12px;
+            color: var(--text-dim);
+            backdrop-filter: blur(8px);
+        }
+        .passport-bar strong { color: var(--text); font-weight: 500; }
+        .passport-stats { display: flex; gap: 16px; }
+        .passport-stat { display: flex; gap: 4px; }
+
+        /* Step nav */
+        .steps {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 24px;
+        }
+        .step {
+            padding: 8px 16px;
+            border-radius: 999px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        .step:hover { background: var(--surface-hover); }
+        .step.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+        .step.done { color: var(--text); }
+
+        /* Card */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            backdrop-filter: blur(8px);
+            margin-bottom: 16px;
+        }
+        .card h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            letter-spacing: -0.01em;
+        }
+        .card p.hint {
+            font-size: 13px;
+            color: var(--text-dim);
+            margin-bottom: 20px;
+        }
+
+        /* Steps — hidden by default */
+        .step-content { display: none; }
+        .step-content.active { display: block; }
+
+        /* Drop zone */
+        .dropzone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--text-dim);
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--accent);
+            color: var(--text);
+            background: var(--accent-dim);
+        }
+
+        /* Term chips */
+        .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--surface-hover);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 6px 10px 6px 12px;
+            font-size: 13px;
+        }
+        .chip .chip-text { cursor: text; }
+        .chip .chip-remove {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 4px;
+        }
+        .chip .chip-remove:hover { color: var(--danger); }
+
+        /* Buttons */
+        button.primary {
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            border-radius: 10px;
+            padding: 10px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        button.primary:hover { filter: brightness(1.1); }
+        button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        button.secondary {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        button.secondary:hover { background: var(--surface-hover); }
+
+        /* Step 3: Use */
+        .mic-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .mic-button {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s ease;
+        }
+        .mic-button:active { transform: scale(0.95); }
+        .mic-button.recording { background: var(--danger); animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+        }
+
+        select.app-select {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-family: inherit;
+            font-size: 13px;
+        }
+
+        /* Output panels */
+        .outputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        @media (max-width: 560px) {
+            .outputs { grid-template-columns: 1fr; }
+        }
+        .output {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            min-height: 80px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .output .label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .output.styled { grid-column: span 2; background: var(--accent-dim); border-color: var(--accent); }
+
+        /* Placeholder state */
+        .output .empty { color: var(--text-muted); font-style: italic; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">Voice Right</div>
+            <div class="tagline">Hear👂 you and write✍️ for you correctly, everywhere.</div>
+        </div>
+
+        <div class="passport-bar">
+            <div><strong>Your passport</strong> · <span id="profile-name">default</span></div>
+            <div class="passport-stats">
+                <div class="passport-stat"><span id="stat-terms">0</span> terms</div>
+                <div class="passport-stat"><span id="stat-corrections">0</span> corrections</div>
+                <div class="passport-stat"><span id="stat-apps">0</span> apps</div>
+            </div>
+        </div>
+
+        <div class="steps">
+            <div class="step active" data-step="1">1. Mic</div>
+            <div class="step" data-step="2">2. Learn</div>
+            <div class="step" data-step="3">3. Calibrate</div>
+            <div class="step" data-step="4">4. Use</div>
+        </div>
+
+        <!-- Step 1: Mic test -->
+        <div class="step-content active" id="step-1">
+            <div class="card">
+                <h2>Pick your mic</h2>
+                <p class="hint">Voice Right needs microphone access. Pick your input device, speak a few words, and make sure the green level bar moves. This test runs locally — no audio leaves your device.</p>
+
+                <div id="mic-enable-row" style="margin-bottom: 16px;">
+                    <button class="primary" id="mic-enable-btn">Enable microphone</button>
+                    <span id="mic-perm-status" style="color: var(--text-dim); margin-left: 12px; font-size: 13px;"></span>
+                </div>
+
+                <div id="mic-controls" style="display: none;">
+                    <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Input device</label>
+                    <select class="app-select" id="mic-device-select" style="width: 100%; margin-bottom: 16px;"></select>
+
+                    <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Live input level</label>
+                    <div id="level-bar-container" style="width: 100%; height: 12px; background: var(--surface-hover); border-radius: 999px; overflow: hidden; border: 1px solid var(--border);">
+                        <div id="level-bar-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #34d399); transition: width 0.05s linear;"></div>
+                    </div>
+                    <div id="mic-status" style="margin-top: 10px; font-size: 13px; color: var(--text-dim);">Waiting for audio…</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Learn -->
+        <div class="step-content" id="step-2">
+            <div class="card">
+                <h2>Show Voice Right your world</h2>
+                <p class="hint">Drop a screenshot of your Gmail, Notion, Slack — anything with your vocabulary. Gemma 4 E4B reads it locally and extracts your terms. No network calls.</p>
+                <div class="dropzone" id="dropzone">
+                    <div>Drop a screenshot or click to select</div>
+                    <input type="file" id="file-input" accept="image/*" hidden>
+                </div>
+                <div class="chips" id="chips"></div>
+            </div>
+        </div>
+
+        <!-- Step 3: Calibrate -->
+        <div class="step-content" id="step-3">
+            <div class="card">
+                <h2>Teach it your voice</h2>
+                <p class="hint">Read a short script. Voice Right benchmarks your accuracy before and after learning your corrections. Usually takes 30 seconds.</p>
+                <div id="calibration-script" style="color: var(--text-muted); font-style: italic;">Calibration wired in next — coming soon.</div>
+            </div>
+        </div>
+
+        <!-- Step 4: Use -->
+        <div class="step-content" id="step-4">
+            <div class="card">
+                <h2>Speak → styled text</h2>
+                <p class="hint">Pick the target app, hit the mic, say what you mean. Voice Right transcribes and rewrites it to match how you'd type there.</p>
+                <div class="mic-row">
+                    <button class="mic-button" id="mic-button" title="Record">🎙</button>
+                    <select class="app-select" id="app-select">
+                        <option value="gmail">Gmail</option>
+                        <option value="imessage">iMessage</option>
+                        <option value="discord">Discord</option>
+                        <option value="linkedin">LinkedIn</option>
+                        <option value="twitter">X / Twitter</option>
+                        <option value="slack">Slack</option>
+                        <option value="terminal">Terminal</option>
+                    </select>
+                    <input type="text" id="text-input" placeholder="Or type here to test style transfer..."
+                        style="flex: 1; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-family: inherit; font-size: 13px;">
+                    <button class="primary" id="style-button">Style it →</button>
+                </div>
+                <div class="outputs">
+                    <div class="output">
+                        <span class="label">Parakeet</span>
+                        <span id="out-parakeet" class="empty">(not yet wired)</span>
+                    </div>
+                    <div class="output">
+                        <span class="label">Whisper</span>
+                        <span id="out-whisper" class="empty">(not yet wired)</span>
+                    </div>
+                    <div class="output styled">
+                        <span class="label">Styled for <span id="out-app-label">gmail</span></span>
+                        <span id="out-styled" class="empty">Output will appear here.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // State
+        // ============================================================
+        let profile = null;
+
+        // ============================================================
+        // Profile bar
+        // ============================================================
+        async function refreshProfile() {
+            try {
+                const r = await fetch('/api/profile');
+                profile = await r.json();
+                document.getElementById('stat-terms').textContent = profile.terms?.length ?? 0;
+                document.getElementById('stat-corrections').textContent = profile.corrections?.length ?? 0;
+                document.getElementById('stat-apps').textContent = Object.keys(profile.style_per_app ?? {}).length;
+                renderChips();
+            } catch (err) {
+                console.error('Failed to load profile', err);
+            }
+        }
+
+        function renderChips() {
+            const el = document.getElementById('chips');
+            el.innerHTML = '';
+            for (const term of (profile?.terms ?? [])) {
+                const chip = document.createElement('span');
+                chip.className = 'chip';
+                chip.innerHTML = `<span class="chip-text" contenteditable="true">${term.text}</span><button class="chip-remove" data-id="${term.id}" title="Remove">✕</button>`;
+                el.appendChild(chip);
+            }
+        }
+
+        // ============================================================
+        // Step navigation
+        // ============================================================
+        document.querySelectorAll('.step').forEach(s => {
+            s.addEventListener('click', () => {
+                const n = s.dataset.step;
+                document.querySelectorAll('.step').forEach(x => x.classList.remove('active'));
+                s.classList.add('active');
+                document.querySelectorAll('.step-content').forEach(x => x.classList.remove('active'));
+                document.getElementById(`step-${n}`).classList.add('active');
+            });
+        });
+
+        // ============================================================
+        // Step 3 — style transfer
+        // ============================================================
+        document.getElementById('app-select').addEventListener('change', (e) => {
+            document.getElementById('out-app-label').textContent = e.target.value;
+        });
+
+        document.getElementById('style-button').addEventListener('click', async () => {
+            const text = document.getElementById('text-input').value.trim();
+            if (!text) return;
+            const app = document.getElementById('app-select').value;
+            const out = document.getElementById('out-styled');
+            out.textContent = 'Thinking... (first run loads Gemma 4 E4B, ~30s)';
+            out.classList.remove('empty');
+            try {
+                const r = await fetch('/api/style', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, app })
+                });
+                const j = await r.json();
+                if (j.error) {
+                    out.textContent = `Error: ${j.error}`;
+                } else {
+                    out.textContent = j.styled;
+                }
+            } catch (err) {
+                out.textContent = `Error: ${err.message}`;
+            }
+        });
+
+        // ============================================================
+        // Step 2 — Learn: screenshot → Gemma 4 vision → term chips
+        // ============================================================
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('file-input');
+
+        async function uploadScreenshot(file) {
+            if (!file || !file.type?.startsWith('image/')) {
+                alert('Please drop an image file (PNG/JPG/etc).');
+                return;
+            }
+            const dzHtml = dropzone.innerHTML;
+            dropzone.innerHTML = `<div>Reading with Gemma 4 E4B... this takes a few seconds.</div>`;
+            dropzone.style.opacity = '0.7';
+
+            try {
+                const fd = new FormData();
+                fd.append('file', file);
+                const r = await fetch('/api/screenshot-to-terms', { method: 'POST', body: fd });
+                const j = await r.json();
+                if (j.error) {
+                    dropzone.innerHTML = `<div style="color: var(--danger)">Error: ${j.error}</div>`;
+                    return;
+                }
+                // Merge new terms into profile (dedupe by lowercased text)
+                if (!profile) await refreshProfile();
+                const existing = new Set((profile.terms || []).map(t => t.text.toLowerCase()));
+                const now = new Date().toISOString();
+                const added = [];
+                for (const text of (j.terms || [])) {
+                    if (existing.has(text.toLowerCase())) continue;
+                    profile.terms.push({
+                        id: `t_${Date.now()}_${added.length}`,
+                        text,
+                        source: 'screenshot',
+                        added: now,
+                    });
+                    existing.add(text.toLowerCase());
+                    added.push(text);
+                }
+                // Persist
+                await fetch('/api/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(profile),
+                });
+                await refreshProfile();
+                dropzone.innerHTML = `<div>✓ Extracted ${j.terms.length} terms (${added.length} new). Drop another screenshot to add more.</div>`;
+            } catch (err) {
+                dropzone.innerHTML = `<div style="color: var(--danger)">Error: ${err.message}</div>`;
+            } finally {
+                dropzone.style.opacity = '1';
+                // Restore original label after 2.5s
+                setTimeout(() => { dropzone.innerHTML = dzHtml; }, 2500);
+            }
+        }
+
+        dropzone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            const f = e.target.files?.[0];
+            if (f) uploadScreenshot(f);
+            fileInput.value = ''; // allow re-selecting same file
+        });
+        ['dragenter', 'dragover'].forEach(ev => {
+            dropzone.addEventListener(ev, (e) => {
+                e.preventDefault();
+                dropzone.classList.add('dragover');
+            });
+        });
+        ['dragleave', 'drop'].forEach(ev => {
+            dropzone.addEventListener(ev, (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('dragover');
+            });
+        });
+        dropzone.addEventListener('drop', (e) => {
+            const f = e.dataTransfer?.files?.[0];
+            if (f) uploadScreenshot(f);
+        });
+
+        // Wire chip remove buttons (delegated)
+        document.getElementById('chips').addEventListener('click', async (e) => {
+            const btn = e.target.closest('.chip-remove');
+            if (!btn) return;
+            const id = btn.dataset.id;
+            profile.terms = (profile.terms || []).filter(t => t.id !== id);
+            await fetch('/api/profile', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(profile),
+            });
+            await refreshProfile();
+        });
+
+        // ============================================================
+        // Step 1 — Microphone test (device selector + level meter)
+        // ============================================================
+        const micState = {
+            stream: null,
+            audioCtx: null,
+            analyser: null,
+            rafId: null,
+            selectedDeviceId: null,
+            levelSeen: false,
+        };
+
+        function dedupeAudioDevices(devices) {
+            // macOS often surfaces "default" + the real device pointing at the same source.
+            // Keep one entry per unique (groupId || deviceId) so the dropdown doesn't double-up.
+            const seen = new Set();
+            const result = [];
+            for (const d of devices.filter(d => d.kind === 'audioinput')) {
+                const key = d.groupId || d.deviceId;
+                if (seen.has(key)) continue;
+                seen.add(key);
+                result.push(d);
+            }
+            return result;
+        }
+
+        async function populateDeviceList() {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const mics = dedupeAudioDevices(devices);
+            const sel = document.getElementById('mic-device-select');
+            sel.innerHTML = '';
+            for (const d of mics) {
+                const opt = document.createElement('option');
+                opt.value = d.deviceId;
+                opt.textContent = d.label || `Microphone (${d.deviceId.slice(0, 8)})`;
+                sel.appendChild(opt);
+            }
+            if (mics.length && !micState.selectedDeviceId) {
+                micState.selectedDeviceId = mics[0].deviceId;
+                sel.value = micState.selectedDeviceId;
+            }
+        }
+
+        async function attachMic(deviceId) {
+            // Tear down any existing analyser/stream
+            if (micState.rafId) cancelAnimationFrame(micState.rafId);
+            if (micState.stream) {
+                micState.stream.getTracks().forEach(t => t.stop());
+            }
+            if (micState.audioCtx && micState.audioCtx.state !== 'closed') {
+                await micState.audioCtx.close();
+            }
+
+            const constraints = {
+                audio: deviceId ? { deviceId: { exact: deviceId } } : true,
+            };
+            micState.stream = await navigator.mediaDevices.getUserMedia(constraints);
+            micState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            micState.analyser = micState.audioCtx.createAnalyser();
+            micState.analyser.fftSize = 256;
+
+            const source = micState.audioCtx.createMediaStreamSource(micState.stream);
+            source.connect(micState.analyser);
+
+            const data = new Uint8Array(micState.analyser.frequencyBinCount);
+            const fill = document.getElementById('level-bar-fill');
+            const status = document.getElementById('mic-status');
+            micState.levelSeen = false;
+
+            function tick() {
+                micState.analyser.getByteFrequencyData(data);
+                let sum = 0;
+                for (let i = 0; i < data.length; i++) sum += data[i];
+                const avg = sum / data.length;          // 0..255
+                const pct = Math.min(100, avg * 0.78);  // scale so normal speech ≈ 70-90%
+                fill.style.width = `${pct}%`;
+
+                if (avg > 10 && !micState.levelSeen) {
+                    micState.levelSeen = true;
+                    status.textContent = '✓ Mic is working. Say anything and watch the bar.';
+                    status.style.color = 'var(--accent)';
+                }
+                micState.rafId = requestAnimationFrame(tick);
+            }
+            tick();
+
+            // Save selected device for downstream recording
+            window.__voiceRightMicDeviceId = deviceId;
+        }
+
+        document.getElementById('mic-enable-btn').addEventListener('click', async () => {
+            const statusEl = document.getElementById('mic-perm-status');
+            try {
+                // First call triggers the browser permission prompt
+                await navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(s => s.getTracks().forEach(t => t.stop()));
+                await populateDeviceList();
+                document.getElementById('mic-enable-row').style.display = 'none';
+                document.getElementById('mic-controls').style.display = 'block';
+                await attachMic(micState.selectedDeviceId);
+                statusEl.textContent = '';
+            } catch (err) {
+                statusEl.textContent = `Permission denied or no mic found (${err.name || 'error'}).`;
+                statusEl.style.color = 'var(--danger)';
+            }
+        });
+
+        document.getElementById('mic-device-select').addEventListener('change', async (e) => {
+            micState.selectedDeviceId = e.target.value;
+            document.getElementById('mic-status').textContent = 'Switching…';
+            document.getElementById('mic-status').style.color = 'var(--text-dim)';
+            try {
+                await attachMic(micState.selectedDeviceId);
+            } catch (err) {
+                document.getElementById('mic-status').textContent = `Couldn't open that device (${err.name})`;
+                document.getElementById('mic-status').style.color = 'var(--danger)';
+            }
+        });
+
+        // Refresh device list when a device is plugged / unplugged
+        if (navigator.mediaDevices?.addEventListener) {
+            navigator.mediaDevices.addEventListener('devicechange', async () => {
+                if (micState.stream) await populateDeviceList();
+            });
+        }
+
+        // ============================================================
+        // Init
+        // ============================================================
+        refreshProfile();
+    </script>
+</body>
+</html>
