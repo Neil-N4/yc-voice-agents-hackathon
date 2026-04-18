@@ -19,18 +19,25 @@ This file is also exposed as `AGENTS.md` (Codex convention) and `.cursorrules` (
 - **STT:** dual STT pipeline (see Jenny's prior `voice-passport-prototype` for reference patterns only — NO code copying, fresh build only per hackathon rules)
 - **Runtime:** TBD — likely Python for Cactus integration
 
-## Workflow (updated 2026-04-18 afternoon)
+## Workflow (STRICT — updated 2026-04-18 late afternoon)
 
-- **Always create a branch first.** Never commit directly on `main`.
-  - Jenny's branches: `jenny/<feature>` (e.g. `jenny/scaffold`, `jenny/brain`, `jenny/demo-ui`)
-  - Neil's branches: follow his own convention (likely `neil/<feature>`)
-- **Work on your branch; merge to `main` directly.** **No PR required** for hackathon speed. Typical flow: `git checkout main && git merge <branch> && git push origin main`.
-- **Commits:** small logical commits on your branch, pushed to origin often (every ~30 min) so teammates can see progress.
-- **Rules that still apply:**
-  - Never commit secrets (`.env`, API keys, tokens). `git status` before every `git add`.
-  - Never force-push or rewrite `main`.
-  - Don't merge Neil's branches to `main` without his verbal OK — he's the repo owner.
-- **When a PR still makes sense:** optional, only when you want a teammate sanity-check or to document a risky change. Default path = no PR.
+**Hard rule: ALWAYS branch. ALWAYS commit to the branch first. NEVER commit directly to `main`.** No exceptions — not for doc tweaks, not for one-line fixes, not for bootstrap. Every change goes on a branch first. This rule is global for this repo and applies to every contributor and every AI session.
+
+**Steps for every new feature:**
+
+1. **Sync latest `main` first.** Run `git checkout main && git pull origin main` BEFORE creating a branch. Never branch from stale state.
+2. **Create a feature-descriptive branch.** Name it after the feature you're building:
+   - Jenny: `jenny/<feature>` (e.g. `jenny/brain`, `jenny/stt`, `jenny/demo-ui`, `jenny/hybrid-routing`)
+   - Neil: follow his own convention (likely `neil/<feature>`)
+3. **Commit on the branch.** Small logical commits, pushed to origin often (every ~30 min) so teammates can see progress.
+4. **Merge branch → main → push.** `git checkout main && git pull && git merge <branch> && git push origin main`. **No PR required** for Jenny's branches (hackathon speed), but the branch-first step is mandatory.
+
+**Rules that still apply:**
+- Never commit secrets (`.env`, API keys, tokens). `git status` before every `git add`.
+- Never force-push or rewrite `main`.
+- Don't merge Neil's branches to `main` without his verbal OK — he's the repo owner.
+
+**When a PR still makes sense:** optional, only when you want a teammate sanity-check or to document a risky change. Default path = no PR.
 - **gstack skills:** fully wired. Common flows:
   - `/checkpoint` — save progress (syncs to Drive via MCP)
   - `/office-hours` — design doc sessions (syncs to Drive via MCP)
