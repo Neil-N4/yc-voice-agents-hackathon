@@ -19,13 +19,18 @@ This file is also exposed as `AGENTS.md` (Codex convention) and `.cursorrules` (
 - **STT:** dual STT pipeline (see Jenny's prior `voice-passport-prototype` for reference patterns only — NO code copying, fresh build only per hackathon rules)
 - **Runtime:** TBD — likely Python for Cactus integration
 
-## Workflow
+## Workflow (updated 2026-04-18 afternoon)
 
-- **Branches (default):** branch-and-PR for regular work.
+- **Always create a branch first.** Never commit directly on `main`.
   - Jenny's branches: `jenny/<feature>` (e.g. `jenny/scaffold`, `jenny/brain`, `jenny/demo-ui`)
-  - Neil's branches: follow his own convention
-- **Jenny's exception:** Jenny may push directly to `main` in this repo when branch-and-PR would slow the hackathon down (bootstrap commits, crunch-time fixes, or merging her own work with verbal approval). This applies to this repo only. Default remains branch-and-PR.
-- **Commits:** commit continuously on your branch — small logical commits, pushed often. Aggregate into a PR when the feature is mergeable.
+  - Neil's branches: follow his own convention (likely `neil/<feature>`)
+- **Work on your branch; merge to `main` directly.** **No PR required** for hackathon speed. Typical flow: `git checkout main && git merge <branch> && git push origin main`.
+- **Commits:** small logical commits on your branch, pushed to origin often (every ~30 min) so teammates can see progress.
+- **Rules that still apply:**
+  - Never commit secrets (`.env`, API keys, tokens). `git status` before every `git add`.
+  - Never force-push or rewrite `main`.
+  - Don't merge Neil's branches to `main` without his verbal OK — he's the repo owner.
+- **When a PR still makes sense:** optional, only when you want a teammate sanity-check or to document a risky change. Default path = no PR.
 - **gstack skills:** fully wired. Common flows:
   - `/checkpoint` — save progress (syncs to Drive via MCP)
   - `/office-hours` — design doc sessions (syncs to Drive via MCP)
