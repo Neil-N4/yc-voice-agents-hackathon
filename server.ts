@@ -190,6 +190,59 @@ img { display: block; width: 100%; max-width: 380px; height: auto; }
             },
         },
 
+        // Voiceprint: accept an audio recording, compute 256-dim speaker embedding,
+        // running-average into the passport. Audio must be 16-bit PCM WAV.
+        // The brain converts from WebM/other via ffmpeg before calling this endpoint
+        // (we also do a best-effort conversion here to unblock direct browser MediaRecorder
+        // blobs which are typically audio/webm).
+        "/api/voiceprint": {
+            async POST(req) {
+                try {
+                    const formData = await req.formData();
+                    const file = formData.get("file") as File | null;
+                    if (!file || typeof file === "string") {
+                        return Response.json({ error: "no file uploaded (form field 'file')" }, { status: 400 });
+                    }
+
+                    // Write raw upload
+                    const rawPath = `/tmp/voice-right-voiceprint-${Date.now()}.bin`;
+                    await Bun.write(rawPath, file);
+
+                    // Convert to 16-bit PCM 16kHz mono WAV (speaker model requires this).
+                    const wavPath = `${rawPath}.wav`;
+                    const ff = await $`ffmpeg -y -i ${rawPath} -ar 16000 -ac 1 -sample_fmt s16 ${wavPath}`
+                        .quiet()
+                        .nothrow();
+                    if (ff.exitCode !== 0) {
+                        return Response.json({
+                            error: "ffmpeg conversion failed",
+                            stderr: String(ff.stderr).slice(-500),
+                        }, { status: 500 });
+                    }
+
+                    const raw = await $`.venv/bin/python brain.py voiceprint ${wavPath}`.quiet().text();
+
+                    // brain.py prints a JSON object on its last line; scan from the end.
+                    const lines = raw.trim().split("\n").filter(Boolean);
+                    let parsed: any = null;
+                    for (let i = lines.length - 1; i >= 0; i--) {
+                        const line = lines[i].trim();
+                        if (!line.startsWith("{")) continue;
+                        try { parsed = JSON.parse(line); break; } catch { /* keep scanning */ }
+                    }
+                    if (!parsed) {
+                        return Response.json({
+                            error: "could not parse voiceprint result",
+                            raw: raw.slice(-500),
+                        }, { status: 500 });
+                    }
+                    return Response.json(parsed);
+                } catch (err) {
+                    return Response.json({ error: String(err) }, { status: 500 });
+                }
+            },
+        },
+
         // Calibration: generate personalized script from passport terms
         "/api/calibrate/generate": {
             async POST(req) {

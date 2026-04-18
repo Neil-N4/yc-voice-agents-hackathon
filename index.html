@@ -284,6 +284,7 @@
                 <div class="passport-stat"><span id="stat-terms">0</span> terms</div>
                 <div class="passport-stat"><span id="stat-corrections">0</span> corrections</div>
                 <div class="passport-stat"><span id="stat-apps">0</span> apps</div>
+                <div class="passport-stat" id="stat-voiceprint" title="Voiceprint: 256-dim speaker embedding — your acoustic identity, on-device only."><span id="stat-voiceprint-icon">🫥</span> <span id="stat-voiceprint-label">no voiceprint</span></div>
             </div>
         </div>
 
@@ -313,8 +314,9 @@
                     <div id="level-bar-container" style="width: 100%; height: 12px; background: var(--surface-hover); border-radius: 999px; overflow: hidden; border: 1px solid var(--border);">
                         <div id="level-bar-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #34d399); transition: width 0.05s linear;"></div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap;">
                         <button class="secondary" id="mic-stop-btn">Stop listening</button>
+                        <button class="primary" id="mic-sample-btn" title="Record 3 seconds of your voice → 256-dim voiceprint → saved to your passport. Runs on-device.">Sample my voice</button>
                         <div id="mic-status" style="font-size: 13px; color: var(--text-dim);">Waiting for audio…</div>
                     </div>
                 </div>
@@ -432,6 +434,19 @@
                 document.getElementById('stat-terms').textContent = profile.terms?.length ?? 0;
                 document.getElementById('stat-corrections').textContent = profile.corrections?.length ?? 0;
                 document.getElementById('stat-apps').textContent = Object.keys(profile.style_per_app ?? {}).length;
+                // Voiceprint indicator
+                const vpSamples = profile.voiceprint_samples ?? 0;
+                const icon = document.getElementById('stat-voiceprint-icon');
+                const label = document.getElementById('stat-voiceprint-label');
+                if (vpSamples > 0) {
+                    icon.textContent = '🎙';
+                    label.textContent = `voiceprint ×${vpSamples}`;
+                    icon.parentElement.style.color = 'var(--accent)';
+                } else {
+                    icon.textContent = '🫥';
+                    label.textContent = 'no voiceprint';
+                    icon.parentElement.style.color = 'var(--text-dim)';
+                }
                 renderChips();
             } catch (err) {
                 console.error('Failed to load profile', err);
@@ -917,6 +932,56 @@
 
         document.getElementById('mic-stop-btn').addEventListener('click', () => {
             detachMic({ reason: 'Mic stopped. Click Enable microphone to test again.' });
+        });
+
+        // Sample-my-voice: record 3 seconds → POST to /api/voiceprint → passport updated.
+        // Reuses the same stream that Step 1's level meter is using, so no second permission prompt.
+        document.getElementById('mic-sample-btn').addEventListener('click', async () => {
+            const status = document.getElementById('mic-status');
+            const btn = document.getElementById('mic-sample-btn');
+
+            if (!micState.stream) {
+                status.textContent = 'Click "Enable microphone" first.';
+                status.style.color = 'var(--danger)';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Recording 3 s…';
+            status.textContent = 'Say a few words naturally — voiceprint samples in 3 seconds.';
+            status.style.color = 'var(--text-dim)';
+
+            let chunks = [];
+            const rec = new MediaRecorder(micState.stream);
+            rec.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+            rec.onstop = async () => {
+                const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
+                btn.textContent = 'Processing…';
+                status.textContent = 'Computing 256-dim voiceprint on-device…';
+                try {
+                    const fd = new FormData();
+                    fd.append('file', blob, 'sample.webm');
+                    const r = await fetch('/api/voiceprint', { method: 'POST', body: fd });
+                    const j = await r.json();
+                    if (j.error) {
+                        status.textContent = `Voiceprint error: ${j.error}`;
+                        status.style.color = 'var(--danger)';
+                    } else {
+                        status.textContent = `✓ Voiceprint saved (${j.voiceprint_dim}-dim, sample #${j.voiceprint_samples}). Runs on-device only.`;
+                        status.style.color = 'var(--accent)';
+                        await refreshProfile();
+                    }
+                } catch (err) {
+                    status.textContent = `Error: ${err.message}`;
+                    status.style.color = 'var(--danger)';
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Sample my voice';
+                }
+            };
+
+            rec.start();
+            setTimeout(() => { if (rec.state === 'recording') rec.stop(); }, 3000);
         });
 
         // Auto-stop when the user navigates away from Step 1 — nobody wants a hot
