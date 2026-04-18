@@ -21,8 +21,10 @@ This file is also exposed as `AGENTS.md` (Codex convention) and `.cursorrules` (
 
 ## Workflow
 
-- **Branches:** feature branches, PRs against `main`. Never push directly to `main`.
-- **Commits:** bisect into small logical commits. Each commit should be independently revertable.
+- **Branches:** ALWAYS branch-and-PR. Never push directly to `main`, even for boilerplate or config.
+  - Jenny's branches: `jenny/<feature>` (e.g. `jenny/scaffold`, `jenny/brain`, `jenny/demo-ui`)
+  - Neil's branches: follow his own convention
+- **Commits:** commit continuously on your branch — small logical commits, pushed often. Aggregate into a PR when the feature is mergeable.
 - **gstack skills:** fully wired. Common flows:
   - `/checkpoint` — save progress (syncs to Drive via MCP)
   - `/office-hours` — design doc sessions (syncs to Drive via MCP)
