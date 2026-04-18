@@ -313,7 +313,10 @@
                     <div id="level-bar-container" style="width: 100%; height: 12px; background: var(--surface-hover); border-radius: 999px; overflow: hidden; border: 1px solid var(--border);">
                         <div id="level-bar-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #34d399); transition: width 0.05s linear;"></div>
                     </div>
-                    <div id="mic-status" style="margin-top: 10px; font-size: 13px; color: var(--text-dim);">Waiting for audio…</div>
+                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 10px;">
+                        <button class="secondary" id="mic-stop-btn">Stop listening</button>
+                        <div id="mic-status" style="font-size: 13px; color: var(--text-dim);">Waiting for audio…</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -878,6 +881,60 @@
                 document.getElementById('mic-status').textContent = `Couldn't open that device (${err.name})`;
                 document.getElementById('mic-status').style.color = 'var(--danger)';
             }
+        });
+
+        // Stop everything: cancel the RAF loop, stop the mic tracks, close the audio context.
+        // Resets the UI to the pre-enable state so the user can start fresh.
+        async function detachMic(opts = {}) {
+            const { reason = 'Mic stopped.' } = opts;
+            if (micState.rafId) {
+                cancelAnimationFrame(micState.rafId);
+                micState.rafId = null;
+            }
+            if (micState.stream) {
+                micState.stream.getTracks().forEach(t => t.stop());
+                micState.stream = null;
+            }
+            if (micState.audioCtx && micState.audioCtx.state !== 'closed') {
+                try { await micState.audioCtx.close(); } catch {}
+            }
+            micState.audioCtx = null;
+            micState.analyser = null;
+            micState.levelSeen = false;
+            window.__voiceRightMicDeviceId = null;
+
+            // Reset the level bar and show the Enable button again so the user can restart.
+            const fill = document.getElementById('level-bar-fill');
+            if (fill) fill.style.width = '0%';
+            document.getElementById('mic-controls').style.display = 'none';
+            document.getElementById('mic-enable-row').style.display = '';
+            const permStatus = document.getElementById('mic-perm-status');
+            if (permStatus) {
+                permStatus.textContent = reason;
+                permStatus.style.color = 'var(--text-dim)';
+            }
+        }
+
+        document.getElementById('mic-stop-btn').addEventListener('click', () => {
+            detachMic({ reason: 'Mic stopped. Click Enable microphone to test again.' });
+        });
+
+        // Auto-stop when the user navigates away from Step 1 — nobody wants a hot
+        // mic running in the background while they're on Learn/Calibrate/Use.
+        document.querySelectorAll('.step').forEach(s => {
+            s.addEventListener('click', () => {
+                if (s.dataset.step !== '1' && micState.stream) {
+                    detachMic({ reason: 'Mic auto-stopped when you left Step 1.' });
+                }
+            });
+        });
+
+        // Also stop when the tab is hidden / closed.
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && micState.stream) detachMic({ reason: 'Mic stopped (tab hidden).' });
+        });
+        window.addEventListener('beforeunload', () => {
+            if (micState.stream) micState.stream.getTracks().forEach(t => t.stop());
         });
 
         // Refresh device list when a device is plugged / unplugged
