@@ -19,52 +19,30 @@ This file is also exposed as `AGENTS.md` (Codex convention) and `.cursorrules` (
 - **STT:** dual STT pipeline (see Jenny's prior `voice-passport-prototype` for reference patterns only — NO code copying, fresh build only per hackathon rules)
 - **Runtime:** TBD — likely Python for Cactus integration
 
-## Workflow (STRICT — updated 2026-04-18 late afternoon)
+## Workflow (MAIN-ONLY — updated 2026-04-18 evening)
 
-**Hard rule: ALWAYS branch. ALWAYS commit to the branch first. NEVER commit directly to `main`.** No exceptions — not for doc tweaks, not for one-line fixes, not for bootstrap. Every change goes on a branch first. This rule is global for this repo and applies to every contributor and every AI session.
+**Hard rule: commit directly to `main`. No feature branches. No pull requests. No compare views.** Every change — code, docs, config — lands on `main` in a single commit, pushed immediately. Hackathon-speed override. Applies to every contributor and every AI session in this repo.
 
-**Per-turn discipline (for AI sessions):** every time the user sends an input, the AI session must (a) pull the latest `main` before doing substantive work, and (b) report the current branch on the first line of its reply (format: `**Branch: \`<name>\`**`). Multiple Claude sessions run on this repo in parallel — this discipline keeps every session honest about local state.
+**Exact flow:**
 
-**Steps for every new feature:**
+```bash
+cd ~/yc-voice-agents-hackathon
+git pull origin main
+# make the change
+git add <files>
+git commit -m "..."
+git push origin main
+```
 
-1. **Sync latest `main` first.** Run `git checkout main && git pull origin main` BEFORE creating a branch. Never branch from stale state.
-2. **Create a feature-descriptive branch.** Name it after the feature you're building:
-   - Jenny: `jenny/<feature>` (e.g. `jenny/brain`, `jenny/stt`, `jenny/demo-ui`, `jenny/hybrid-routing`)
-   - Neil: follow his own convention (likely `neil/<feature>`)
-3. **Commit on the branch.** Small logical commits, pushed to origin often (every ~30 min) so teammates can see progress.
-4. **Merge branch → main → push.** `git checkout main && git pull && git merge <branch> && git push origin main`. **No PR required** for Jenny's branches (hackathon speed), but the branch-first step is mandatory.
+**Per-turn discipline (for AI sessions):** every time the user sends an input, the AI session must (a) pull latest `main` before substantive work, and (b) report the current branch on the first line of its reply (`**Branch: \`<name>\`**`). With main-only, this will always say `main`.
 
 **Rules that still apply:**
 - Never commit secrets (`.env`, API keys, tokens). `git status` before every `git add`.
 - Never force-push or rewrite `main`.
-- Don't merge Neil's branches to `main` without his verbal OK — he's the repo owner.
+- Pull before push. If `git push` rejects (you're behind), `git pull --rebase origin main` then push.
+- Verbal coordination for overlapping changes. If two people edit the same file simultaneously, talk it out — don't fight git.
 
-**When a PR still makes sense:** optional, only when you want a teammate sanity-check or to document a risky change. Default path = no PR.
-
-## Multi-terminal / multi-AI coordination (hackathon speed mode)
-
-Multiple AI agents (Claude Code, Cursor, Codex, etc.) may run simultaneously in different terminals against this repo. To prevent branch-switch race conditions AND maintain hackathon velocity:
-
-1. **Every contributor (human or AI) works in their own `git worktree`.** Each worktree has its own HEAD, so checkouts and commits never collide between terminals. One-time setup per role:
-   - `git worktree add ~/yc-<role> <branch>` (e.g. `~/yc-brain`, `~/yc-ui`, `~/yc-ops`)
-   - Stay in your worktree. Never `cd` into someone else's.
-
-2. **Branch-first is still mandatory.** Build the feature on a feature branch first (`jenny/<feature>`, `neil/<feature>`, `ops/<task>`). Never commit directly to `main`. Before any `git add` or `git commit`, run `git branch --show-current` and verify it matches your claimed branch.
-
-3. **Any contributor can merge their own finished feature to `main`.** Hackathon speed — no humans-only bottleneck. When your feature is ready:
-   ```
-   git fetch origin
-   git checkout main                      # if this fails "already checked out in another worktree", wait 30s and retry — someone else is merging right now
-   git pull --ff-only origin main
-   git merge --no-ff <your-feature-branch> -m "merge: <one-line summary>"
-   git push origin main
-   git checkout <your-feature-branch>     # return to your lane
-   ```
-   The "main checked out in another worktree" error is git's built-in serialization — it's your signal to wait, not a failure.
-
-4. **Merging someone else's branch to `main` requires verbal OK from its author.** You merge your own work, not your teammate's. Neil's branches need Neil's OK.
-
-5. **Push often, trust origin.** Local state is disposable. Commit small, push every ~15 min. `origin/<branch>` is the source of truth.
+**Worktrees are obsolete under main-only.** `~/yc-jenny` and `~/yc-ops` worktrees that were set up for branch isolation no longer serve a purpose. Recommend collapsing to a single working directory (`~/yc-voice-agents-hackathon`).
 
 - **gstack skills:** fully wired. Common flows:
   - `/checkpoint` — save progress (syncs to Drive via MCP)
