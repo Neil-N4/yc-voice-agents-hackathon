@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "name": "default",
+  "created": "REPLACE_WITH_ISO_TIMESTAMP",
+  "updated": "REPLACE_WITH_ISO_TIMESTAMP",
+  "language": "en",
+  "terms": [],
+  "corrections": [],
+  "style_per_app": {},
+  "calibration": {
+    "last_run_id": null,
+    "accuracy_before": null,
+    "accuracy_after": null
+  }
+}
