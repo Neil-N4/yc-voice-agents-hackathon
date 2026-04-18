@@ -288,13 +288,38 @@
         </div>
 
         <div class="steps">
-            <div class="step active" data-step="1">1. Learn</div>
-            <div class="step" data-step="2">2. Calibrate</div>
-            <div class="step" data-step="3">3. Use</div>
+            <div class="step active" data-step="1">1. Mic</div>
+            <div class="step" data-step="2">2. Learn</div>
+            <div class="step" data-step="3">3. Calibrate</div>
+            <div class="step" data-step="4">4. Use</div>
         </div>
 
-        <!-- Step 1: Learn -->
+        <!-- Step 1: Mic test -->
         <div class="step-content active" id="step-1">
+            <div class="card">
+                <h2>Pick your mic</h2>
+                <p class="hint">Voice Right needs microphone access. Pick your input device, speak a few words, and make sure the green level bar moves. This test runs locally — no audio leaves your device.</p>
+
+                <div id="mic-enable-row" style="margin-bottom: 16px;">
+                    <button class="primary" id="mic-enable-btn">Enable microphone</button>
+                    <span id="mic-perm-status" style="color: var(--text-dim); margin-left: 12px; font-size: 13px;"></span>
+                </div>
+
+                <div id="mic-controls" style="display: none;">
+                    <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Input device</label>
+                    <select class="app-select" id="mic-device-select" style="width: 100%; margin-bottom: 16px;"></select>
+
+                    <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Live input level</label>
+                    <div id="level-bar-container" style="width: 100%; height: 12px; background: var(--surface-hover); border-radius: 999px; overflow: hidden; border: 1px solid var(--border);">
+                        <div id="level-bar-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #34d399); transition: width 0.05s linear;"></div>
+                    </div>
+                    <div id="mic-status" style="margin-top: 10px; font-size: 13px; color: var(--text-dim);">Waiting for audio…</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Learn -->
+        <div class="step-content" id="step-2">
             <div class="card">
                 <h2>Show Voice Right your world</h2>
                 <p class="hint">Drop a screenshot of your Gmail, Notion, Slack — anything with your vocabulary. Gemma 4 E4B reads it locally and extracts your terms. No network calls.</p>
@@ -306,8 +331,8 @@
             </div>
         </div>
 
-        <!-- Step 2: Calibrate -->
-        <div class="step-content" id="step-2">
+        <!-- Step 3: Calibrate -->
+        <div class="step-content" id="step-3">
             <div class="card">
                 <h2>Teach it your voice</h2>
                 <p class="hint">Read a short script. Voice Right benchmarks your accuracy before and after learning your corrections. Usually takes 30 seconds.</p>
@@ -315,8 +340,8 @@
             </div>
         </div>
 
-        <!-- Step 3: Use -->
-        <div class="step-content" id="step-3">
+        <!-- Step 4: Use -->
+        <div class="step-content" id="step-4">
             <div class="card">
                 <h2>Speak → styled text</h2>
                 <p class="hint">Pick the target app, hit the mic, say what you mean. Voice Right transcribes and rewrites it to match how you'd type there.</p>
@@ -429,6 +454,132 @@
                 out.textContent = `Error: ${err.message}`;
             }
         });
+
+        // ============================================================
+        // Step 1 — Microphone test (device selector + level meter)
+        // ============================================================
+        const micState = {
+            stream: null,
+            audioCtx: null,
+            analyser: null,
+            rafId: null,
+            selectedDeviceId: null,
+            levelSeen: false,
+        };
+
+        function dedupeAudioDevices(devices) {
+            // macOS often surfaces "default" + the real device pointing at the same source.
+            // Keep one entry per unique (groupId || deviceId) so the dropdown doesn't double-up.
+            const seen = new Set();
+            const result = [];
+            for (const d of devices.filter(d => d.kind === 'audioinput')) {
+                const key = d.groupId || d.deviceId;
+                if (seen.has(key)) continue;
+                seen.add(key);
+                result.push(d);
+            }
+            return result;
+        }
+
+        async function populateDeviceList() {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const mics = dedupeAudioDevices(devices);
+            const sel = document.getElementById('mic-device-select');
+            sel.innerHTML = '';
+            for (const d of mics) {
+                const opt = document.createElement('option');
+                opt.value = d.deviceId;
+                opt.textContent = d.label || `Microphone (${d.deviceId.slice(0, 8)})`;
+                sel.appendChild(opt);
+            }
+            if (mics.length && !micState.selectedDeviceId) {
+                micState.selectedDeviceId = mics[0].deviceId;
+                sel.value = micState.selectedDeviceId;
+            }
+        }
+
+        async function attachMic(deviceId) {
+            // Tear down any existing analyser/stream
+            if (micState.rafId) cancelAnimationFrame(micState.rafId);
+            if (micState.stream) {
+                micState.stream.getTracks().forEach(t => t.stop());
+            }
+            if (micState.audioCtx && micState.audioCtx.state !== 'closed') {
+                await micState.audioCtx.close();
+            }
+
+            const constraints = {
+                audio: deviceId ? { deviceId: { exact: deviceId } } : true,
+            };
+            micState.stream = await navigator.mediaDevices.getUserMedia(constraints);
+            micState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            micState.analyser = micState.audioCtx.createAnalyser();
+            micState.analyser.fftSize = 256;
+
+            const source = micState.audioCtx.createMediaStreamSource(micState.stream);
+            source.connect(micState.analyser);
+
+            const data = new Uint8Array(micState.analyser.frequencyBinCount);
+            const fill = document.getElementById('level-bar-fill');
+            const status = document.getElementById('mic-status');
+            micState.levelSeen = false;
+
+            function tick() {
+                micState.analyser.getByteFrequencyData(data);
+                let sum = 0;
+                for (let i = 0; i < data.length; i++) sum += data[i];
+                const avg = sum / data.length;          // 0..255
+                const pct = Math.min(100, avg * 0.78);  // scale so normal speech ≈ 70-90%
+                fill.style.width = `${pct}%`;
+
+                if (avg > 10 && !micState.levelSeen) {
+                    micState.levelSeen = true;
+                    status.textContent = '✓ Mic is working. Say anything and watch the bar.';
+                    status.style.color = 'var(--accent)';
+                }
+                micState.rafId = requestAnimationFrame(tick);
+            }
+            tick();
+
+            // Save selected device for downstream recording
+            window.__voiceRightMicDeviceId = deviceId;
+        }
+
+        document.getElementById('mic-enable-btn').addEventListener('click', async () => {
+            const statusEl = document.getElementById('mic-perm-status');
+            try {
+                // First call triggers the browser permission prompt
+                await navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(s => s.getTracks().forEach(t => t.stop()));
+                await populateDeviceList();
+                document.getElementById('mic-enable-row').style.display = 'none';
+                document.getElementById('mic-controls').style.display = 'block';
+                await attachMic(micState.selectedDeviceId);
+                statusEl.textContent = '';
+            } catch (err) {
+                statusEl.textContent = `Permission denied or no mic found (${err.name || 'error'}).`;
+                statusEl.style.color = 'var(--danger)';
+            }
+        });
+
+        document.getElementById('mic-device-select').addEventListener('change', async (e) => {
+            micState.selectedDeviceId = e.target.value;
+            document.getElementById('mic-status').textContent = 'Switching…';
+            document.getElementById('mic-status').style.color = 'var(--text-dim)';
+            try {
+                await attachMic(micState.selectedDeviceId);
+            } catch (err) {
+                document.getElementById('mic-status').textContent = `Couldn't open that device (${err.name})`;
+                document.getElementById('mic-status').style.color = 'var(--danger)';
+            }
+        });
+
+        // Refresh device list when a device is plugged / unplugged
+        if (navigator.mediaDevices?.addEventListener) {
+            navigator.mediaDevices.addEventListener('devicechange', async () => {
+                if (micState.stream) await populateDeviceList();
+            });
+        }
 
         // ============================================================
         // Init
