@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Right</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #09090b;
+            --surface: rgba(255, 255, 255, 0.04);
+            --surface-hover: rgba(255, 255, 255, 0.08);
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #fafafa;
+            --text-dim: #a1a1aa;
+            --text-muted: #52525b;
+            --accent: #10b981;
+            --accent-dim: rgba(16, 185, 129, 0.15);
+            --danger: #ef4444;
+        }
+
+        html, body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', -apple-system, system-ui, sans-serif;
+            font-feature-settings: 'cv11', 'ss01';
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 16px 80px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 760px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            margin-bottom: 4px;
+        }
+        .tagline {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        /* Passport bar */
+        .passport-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 24px;
+            font-size: 12px;
+            color: var(--text-dim);
+            backdrop-filter: blur(8px);
+        }
+        .passport-bar strong { color: var(--text); font-weight: 500; }
+        .passport-stats { display: flex; gap: 16px; }
+        .passport-stat { display: flex; gap: 4px; }
+
+        /* Step nav */
+        .steps {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 24px;
+        }
+        .step {
+            padding: 8px 16px;
+            border-radius: 999px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        .step:hover { background: var(--surface-hover); }
+        .step.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+        .step.done { color: var(--text); }
+
+        /* Card */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            backdrop-filter: blur(8px);
+            margin-bottom: 16px;
+        }
+        .card h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            letter-spacing: -0.01em;
+        }
+        .card p.hint {
+            font-size: 13px;
+            color: var(--text-dim);
+            margin-bottom: 20px;
+        }
+
+        /* Steps — hidden by default */
+        .step-content { display: none; }
+        .step-content.active { display: block; }
+
+        /* Drop zone */
+        .dropzone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--text-dim);
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--accent);
+            color: var(--text);
+            background: var(--accent-dim);
+        }
+
+        /* Term chips */
+        .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--surface-hover);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 6px 10px 6px 12px;
+            font-size: 13px;
+        }
+        .chip .chip-text { cursor: text; }
+        .chip .chip-remove {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 4px;
+        }
+        .chip .chip-remove:hover { color: var(--danger); }
+
+        /* Buttons */
+        button.primary {
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            border-radius: 10px;
+            padding: 10px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        button.primary:hover { filter: brightness(1.1); }
+        button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        button.secondary {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        button.secondary:hover { background: var(--surface-hover); }
+
+        /* Step 3: Use */
+        .mic-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .mic-button {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s ease;
+        }
+        .mic-button:active { transform: scale(0.95); }
+        .mic-button.recording { background: var(--danger); animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+        }
+
+        select.app-select {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-family: inherit;
+            font-size: 13px;
+        }
+
+        /* Output panels */
+        .outputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        @media (max-width: 560px) {
+            .outputs { grid-template-columns: 1fr; }
+        }
+        .output {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            min-height: 80px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .output .label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .output.styled { grid-column: span 2; background: var(--accent-dim); border-color: var(--accent); }
+
+        /* Placeholder state */
+        .output .empty { color: var(--text-muted); font-style: italic; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">Voice Right</div>
+            <div class="tagline">Hear👂 you and write✍️ for you correctly, everywhere.</div>
+        </div>
+
+        <div class="passport-bar">
+            <div><strong>Your passport</strong> · <span id="profile-name">default</span></div>
+            <div class="passport-stats">
+                <div class="passport-stat"><span id="stat-terms">0</span> terms</div>
+                <div class="passport-stat"><span id="stat-corrections">0</span> corrections</div>
+                <div class="passport-stat"><span id="stat-apps">0</span> apps</div>
+            </div>
+        </div>
+
+        <div class="steps">
+            <div class="step active" data-step="1">1. Learn</div>
+            <div class="step" data-step="2">2. Calibrate</div>
+            <div class="step" data-step="3">3. Use</div>
+        </div>
+
+        <!-- Step 1: Learn -->
+        <div class="step-content active" id="step-1">
+            <div class="card">
+                <h2>Show Voice Right your world</h2>
+                <p class="hint">Drop a screenshot of your Gmail, Notion, Slack — anything with your vocabulary. Gemma 4 E4B reads it locally and extracts your terms. No network calls.</p>
+                <div class="dropzone" id="dropzone">
+                    <div>Drop a screenshot or click to select</div>
+                    <input type="file" id="file-input" accept="image/*" hidden>
+                </div>
+                <div class="chips" id="chips"></div>
+            </div>
+        </div>
+
+        <!-- Step 2: Calibrate -->
+        <div class="step-content" id="step-2">
+            <div class="card">
+                <h2>Teach it your voice</h2>
+                <p class="hint">Read a short script. Voice Right benchmarks your accuracy before and after learning your corrections. Usually takes 30 seconds.</p>
+                <div id="calibration-script" style="color: var(--text-muted); font-style: italic;">Calibration wired in next — coming soon.</div>
+            </div>
+        </div>
+
+        <!-- Step 3: Use -->
+        <div class="step-content" id="step-3">
+            <div class="card">
+                <h2>Speak → styled text</h2>
+                <p class="hint">Pick the target app, hit the mic, say what you mean. Voice Right transcribes and rewrites it to match how you'd type there.</p>
+                <div class="mic-row">
+                    <button class="mic-button" id="mic-button" title="Record">🎙</button>
+                    <select class="app-select" id="app-select">
+                        <option value="gmail">Gmail</option>
+                        <option value="imessage">iMessage</option>
+                        <option value="discord">Discord</option>
+                        <option value="linkedin">LinkedIn</option>
+                        <option value="twitter">X / Twitter</option>
+                        <option value="slack">Slack</option>
+                        <option value="terminal">Terminal</option>
+                    </select>
+                    <input type="text" id="text-input" placeholder="Or type here to test style transfer..."
+                        style="flex: 1; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-family: inherit; font-size: 13px;">
+                    <button class="primary" id="style-button">Style it →</button>
+                </div>
+                <div class="outputs">
+                    <div class="output">
+                        <span class="label">Parakeet</span>
+                        <span id="out-parakeet" class="empty">(not yet wired)</span>
+                    </div>
+                    <div class="output">
+                        <span class="label">Whisper</span>
+                        <span id="out-whisper" class="empty">(not yet wired)</span>
+                    </div>
+                    <div class="output styled">
+                        <span class="label">Styled for <span id="out-app-label">gmail</span></span>
+                        <span id="out-styled" class="empty">Output will appear here.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // State
+        // ============================================================
+        let profile = null;
+
+        // ============================================================
+        // Profile bar
+        // ============================================================
+        async function refreshProfile() {
+            try {
+                const r = await fetch('/api/profile');
+                profile = await r.json();
+                document.getElementById('stat-terms').textContent = profile.terms?.length ?? 0;
+                document.getElementById('stat-corrections').textContent = profile.corrections?.length ?? 0;
+                document.getElementById('stat-apps').textContent = Object.keys(profile.style_per_app ?? {}).length;
+                renderChips();
+            } catch (err) {
+                console.error('Failed to load profile', err);
+            }
+        }
+
+        function renderChips() {
+            const el = document.getElementById('chips');
+            el.innerHTML = '';
+            for (const term of (profile?.terms ?? [])) {
+                const chip = document.createElement('span');
+                chip.className = 'chip';
+                chip.innerHTML = `<span class="chip-text" contenteditable="true">${term.text}</span><button class="chip-remove" data-id="${term.id}" title="Remove">✕</button>`;
+                el.appendChild(chip);
+            }
+        }
+
+        // ============================================================
+        // Step navigation
+        // ============================================================
+        document.querySelectorAll('.step').forEach(s => {
+            s.addEventListener('click', () => {
+                const n = s.dataset.step;
+                document.querySelectorAll('.step').forEach(x => x.classList.remove('active'));
+                s.classList.add('active');
+                document.querySelectorAll('.step-content').forEach(x => x.classList.remove('active'));
+                document.getElementById(`step-${n}`).classList.add('active');
+            });
+        });
+
+        // ============================================================
+        // Step 3 — style transfer
+        // ============================================================
+        document.getElementById('app-select').addEventListener('change', (e) => {
+            document.getElementById('out-app-label').textContent = e.target.value;
+        });
+
+        document.getElementById('style-button').addEventListener('click', async () => {
+            const text = document.getElementById('text-input').value.trim();
+            if (!text) return;
+            const app = document.getElementById('app-select').value;
+            const out = document.getElementById('out-styled');
+            out.textContent = 'Thinking... (first run loads Gemma 4 E4B, ~30s)';
+            out.classList.remove('empty');
+            try {
+                const r = await fetch('/api/style', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, app })
+                });
+                const j = await r.json();
+                if (j.error) {
+                    out.textContent = `Error: ${j.error}`;
+                } else {
+                    out.textContent = j.styled;
+                }
+            } catch (err) {
+                out.textContent = `Error: ${err.message}`;
+            }
+        });
+
+        // ============================================================
+        // Init
+        // ============================================================
+        refreshProfile();
+    </script>
+</body>
+</html>

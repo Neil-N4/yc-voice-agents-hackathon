@@ -1,0 +1,101 @@
+// server.ts — Voice Right Bun server
+//
+// Serves index.html, exposes API for the Python brain + STT.
+// Python subprocess pattern: call brain.py / stt.py via `bun $` — keeps TS thin.
+//
+// Start: bun run server.ts
+// Open:  http://localhost:3000
+
+import { $ } from "bun";
+
+const PORT = 3000;
+const PROFILE_PATH = "data/profiles/default.voicepassport.json";
+const PROFILE_TEMPLATE = "data/profiles/default.voicepassport.json.template";
+const PREFERENCES_PATH = "voice-right.md";
+
+async function loadProfile() {
+    const f = Bun.file(PROFILE_PATH);
+    if (await f.exists()) return await f.json();
+    // Fall back to template, stamping timestamps
+    const template = await Bun.file(PROFILE_TEMPLATE).json();
+    const now = new Date().toISOString();
+    template.created = now;
+    template.updated = now;
+    await Bun.write(PROFILE_PATH, JSON.stringify(template, null, 2));
+    return template;
+}
+
+async function saveProfile(profile: unknown) {
+    await Bun.write(PROFILE_PATH, JSON.stringify(profile, null, 2));
+}
+
+Bun.serve({
+    port: PORT,
+    routes: {
+        // Static
+        "/": async () => new Response(Bun.file("index.html")),
+
+        // Profile API
+        "/api/profile": {
+            async GET() {
+                const profile = await loadProfile();
+                return Response.json(profile);
+            },
+            async PUT(req) {
+                const profile = await req.json();
+                await saveProfile(profile);
+                return Response.json({ ok: true });
+            },
+        },
+
+        // Preferences (voice-right.md)
+        "/api/preferences": async () => {
+            const f = Bun.file(PREFERENCES_PATH);
+            const text = await f.exists() ? await f.text() : "";
+            return Response.json({ markdown: text });
+        },
+
+        // Style transfer — calls brain.py
+        "/api/style": {
+            async POST(req) {
+                const { text, app } = (await req.json()) as { text: string; app: string };
+                if (!text || !app) {
+                    return Response.json({ error: "text and app required" }, { status: 400 });
+                }
+                try {
+                    // Call brain.py subprocess
+                    const result = await $`.venv/bin/python brain.py style ${text} ${app}`
+                        .quiet()
+                        .text();
+                    return Response.json({ styled: result.trim(), app });
+                } catch (err) {
+                    return Response.json({ error: String(err) }, { status: 500 });
+                }
+            },
+        },
+
+        // Transcription — will call stt.py once Neil's stt.py lands
+        "/api/transcribe": {
+            async POST(req) {
+                return Response.json({
+                    error: "stt.py not yet wired — Neil's piece",
+                    parakeet: "",
+                    whisper_pass1: "",
+                    whisper_pass2: "",
+                }, { status: 501 });
+            },
+        },
+    },
+
+    // 404 fallback
+    fetch() {
+        return new Response("Not Found", { status: 404 });
+    },
+
+    error(err) {
+        console.error(err);
+        return new Response(`Server error: ${err.message}`, { status: 500 });
+    },
+});
+
+console.log(`Voice Right server running at http://localhost:${PORT}`);
