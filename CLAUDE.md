@@ -40,6 +40,32 @@ This file is also exposed as `AGENTS.md` (Codex convention) and `.cursorrules` (
 - Don't merge Neil's branches to `main` without his verbal OK — he's the repo owner.
 
 **When a PR still makes sense:** optional, only when you want a teammate sanity-check or to document a risky change. Default path = no PR.
+
+## Multi-terminal / multi-AI coordination (hackathon speed mode)
+
+Multiple AI agents (Claude Code, Cursor, Codex, etc.) may run simultaneously in different terminals against this repo. To prevent branch-switch race conditions AND maintain hackathon velocity:
+
+1. **Every contributor (human or AI) works in their own `git worktree`.** Each worktree has its own HEAD, so checkouts and commits never collide between terminals. One-time setup per role:
+   - `git worktree add ~/yc-<role> <branch>` (e.g. `~/yc-brain`, `~/yc-ui`, `~/yc-ops`)
+   - Stay in your worktree. Never `cd` into someone else's.
+
+2. **Branch-first is still mandatory.** Build the feature on a feature branch first (`jenny/<feature>`, `neil/<feature>`, `ops/<task>`). Never commit directly to `main`. Before any `git add` or `git commit`, run `git branch --show-current` and verify it matches your claimed branch.
+
+3. **Any contributor can merge their own finished feature to `main`.** Hackathon speed — no humans-only bottleneck. When your feature is ready:
+   ```
+   git fetch origin
+   git checkout main                      # if this fails "already checked out in another worktree", wait 30s and retry — someone else is merging right now
+   git pull --ff-only origin main
+   git merge --no-ff <your-feature-branch> -m "merge: <one-line summary>"
+   git push origin main
+   git checkout <your-feature-branch>     # return to your lane
+   ```
+   The "main checked out in another worktree" error is git's built-in serialization — it's your signal to wait, not a failure.
+
+4. **Merging someone else's branch to `main` requires verbal OK from its author.** You merge your own work, not your teammate's. Neil's branches need Neil's OK.
+
+5. **Push often, trust origin.** Local state is disposable. Commit small, push every ~15 min. `origin/<branch>` is the source of truth.
+
 - **gstack skills:** fully wired. Common flows:
   - `/checkpoint` — save progress (syncs to Drive via MCP)
   - `/office-hours` — design doc sessions (syncs to Drive via MCP)
