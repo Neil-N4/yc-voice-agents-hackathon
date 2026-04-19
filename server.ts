@@ -58,7 +58,7 @@ img { display: block; width: 100%; max-width: 380px; height: auto; }
 <body>
 <div class="card">
   <h1>Voice Right</h1>
-  <div class="tagline">The agent that translates how you speak 🗣️ and how you type ⌨️.</div>
+  <div class="tagline">The agent that learns you — then translates how you speak 🗣️ into how you type ⌨️.</div>
   <div class="qr-wrap"><img src="${qrImg}" alt="QR code"></div>
   <div class="url">${targetUrl}</div>
   <div class="hint">Scan with your phone camera to try Voice Right right now.<br>Your voice never leaves your device.</div>

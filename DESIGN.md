@@ -4,15 +4,17 @@
 **Team:** Jenny Ruan (MSME Acoustics, Georgia Tech · founder of YBuffet · 80+ stand-up comedy shows) + Neil Nair (SWE, audio ML research, ex-JPMorgan)
 **Event:** Cactus + Gemma 4 Voice Agents Hackathon at Y Combinator, April 18-19, 2026
 **Target:** Main prize — winner-takes-all YC Interview + $150K GCP credits
-**Tagline:** *The agent that translates how you speak 🗣️ and how you type ⌨️.*
+**Tagline:** *The agent that learns you — then translates how you speak 🗣️ into how you type ⌨️.*
 
 ---
 
 ## 1. The one-sentence pitch
 
-> **Voice Right is the agent that translates how you speak 🗣️ and how you type ⌨️ — per app, per context, on-device, yours forever.**
+> **Voice Right is the agent that learns you — then translates how you speak 🗣️ into how you type ⌨️. Per app, per context, on-device, yours forever.**
 
-It's not transcription. Not dictation. Not an AI writing tool. It's the **translation layer** between two things only you can define: how you speak, and how you'd type in whichever app you're in. The portable `.voicepassport` file IS the translator — it learns from four compounding sources and travels with you.
+It's not transcription. Not dictation. Not an AI writing tool. It's the **translation layer** between two things only you can define: how you speak, and how you'd type in whichever app you're in. The portable `.voicepassport` file IS the translator — it learns from five compounding sources (screenshots, content ingest, voice-right.md preferences, correction capture, voiceprint) and travels with you.
+
+The "learns you" half is what makes the translation actually yours. Without it, we'd just be another voice-to-text tool. With it, every correction and every recording makes the next translation more faithful to your actual voice and your actual writing.
 
 ---
 
