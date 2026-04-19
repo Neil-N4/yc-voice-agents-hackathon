@@ -4,13 +4,15 @@
 **Team:** Jenny Ruan (MSME Acoustics, Georgia Tech · founder of YBuffet · 80+ stand-up comedy shows) + Neil Nair (SWE, audio ML research, ex-JPMorgan)
 **Event:** Cactus + Gemma 4 Voice Agents Hackathon at Y Combinator, April 18-19, 2026
 **Target:** Main prize — winner-takes-all YC Interview + $150K GCP credits
-**Tagline:** *Hear👂 you and write✍️ for you correctly, everywhere.*
+**Tagline:** *The voice agent that maps how you speak to how you type.*
 
 ---
 
 ## 1. The one-sentence pitch
 
-> **Voice Right is a portable voice identity layer — a file that lives on your device, learns who you are from four compounding sources, and makes every voice interface understand you instantly.**
+> **Voice Right is the voice agent that maps how you speak to how you type — per app, per context, on-device, yours forever.**
+
+It's not transcription. Not dictation. Not an AI writing tool. It's the **mapping function** between two things only you can define: your voice output and your writing output. The portable `.voicepassport` file IS the map — it learns from four compounding sources and travels with you.
 
 ---
 
