@@ -6,1190 +6,724 @@
     <title>Voice Right</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-
         :root {
-            --bg: #09090b;
-            --surface: rgba(255, 255, 255, 0.04);
-            --surface-hover: rgba(255, 255, 255, 0.08);
-            --border: rgba(255, 255, 255, 0.08);
-            --text: #fafafa;
-            --text-dim: #a1a1aa;
-            --text-muted: #52525b;
-            --accent: #10b981;
-            --accent-dim: rgba(16, 185, 129, 0.15);
-            --danger: #ef4444;
+            --bg: #0a0d10;
+            --panel: rgba(255,255,255,0.05);
+            --panel-strong: rgba(255,255,255,0.08);
+            --line: rgba(255,255,255,0.1);
+            --text: #f5f7fb;
+            --muted: #a8b0be;
+            --soft: #657081;
+            --mint: #1fd19b;
+            --mint-dim: rgba(31,209,155,0.14);
+            --rose: #ff5f72;
+            --sky: #7cc7ff;
         }
-
         html, body {
-            background: var(--bg);
+            background:
+                radial-gradient(circle at top, rgba(124,199,255,0.12), transparent 35%),
+                radial-gradient(circle at 20% 20%, rgba(31,209,155,0.1), transparent 28%),
+                var(--bg);
             color: var(--text);
-            font-family: 'Inter', -apple-system, system-ui, sans-serif;
-            font-feature-settings: 'cv11', 'ss01';
-            -webkit-font-smoothing: antialiased;
             min-height: 100vh;
+            font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
-
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 24px 16px 80px;
+        body { padding: 28px 16px 64px; }
+        .app { width: 100%; max-width: 1180px; margin: 0 auto; }
+        .hero {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 18px;
+            margin-bottom: 18px;
         }
-
-        .container {
-            width: 100%;
-            max-width: 760px;
+        .hero-card, .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            backdrop-filter: blur(16px);
         }
-
-        /* Header */
-        .header {
-            text-align: center;
-            margin-bottom: 32px;
+        .hero-card { padding: 28px; min-height: 220px; }
+        h1 { font-size: clamp(36px, 5vw, 58px); line-height: 0.94; letter-spacing: -0.04em; max-width: 760px; }
+        .hero-card p {
+            margin-top: 16px;
+            color: var(--muted);
+            max-width: 640px;
+            font-size: 17px;
+            line-height: 1.55;
         }
-        .logo {
-            font-size: 20px;
+        .summary {
+            padding: 24px;
+            display: grid;
+            gap: 18px;
+        }
+        .eyebrow {
+            color: var(--mint);
+            font-size: 12px;
             font-weight: 700;
-            letter-spacing: -0.01em;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+        }
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .stat {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 14px;
+        }
+        .stat strong {
+            display: block;
+            font-size: 26px;
+            font-weight: 800;
             margin-bottom: 4px;
         }
-        .tagline {
-            font-size: 13px;
-            color: var(--text-dim);
-        }
-
-        /* Passport bar */
-        .passport-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 12px 16px;
-            margin-bottom: 24px;
-            font-size: 12px;
-            color: var(--text-dim);
-            backdrop-filter: blur(8px);
-        }
-        .passport-bar strong { color: var(--text); font-weight: 500; }
-        .passport-stats { display: flex; gap: 16px; }
-        .passport-stat { display: flex; gap: 4px; }
-
-        /* Step nav */
-        .steps {
-            display: flex;
-            justify-content: center;
-            gap: 6px;
-            margin-bottom: 24px;
-        }
-        .step {
-            padding: 8px 16px;
-            border-radius: 999px;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            color: var(--text-dim);
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            user-select: none;
-        }
-        .step:hover { background: var(--surface-hover); }
-        .step.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-        .step.done { color: var(--text); }
-
-        /* Card */
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 28px;
-            backdrop-filter: blur(8px);
-            margin-bottom: 16px;
-        }
-        .card h2 {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 6px;
-            letter-spacing: -0.01em;
-        }
-        .card p.hint {
-            font-size: 13px;
-            color: var(--text-dim);
-            margin-bottom: 20px;
-        }
-
-        /* Steps — hidden by default */
-        .step-content { display: none; }
-        .step-content.active { display: block; }
-
-        /* Drop zone */
-        .dropzone {
-            border: 2px dashed var(--border);
-            border-radius: 12px;
-            padding: 40px 20px;
-            text-align: center;
-            color: var(--text-dim);
-            transition: all 0.15s ease;
-            cursor: pointer;
-        }
-        .dropzone:hover, .dropzone.dragover {
-            border-color: var(--accent);
-            color: var(--text);
-            background: var(--accent-dim);
-        }
-
-        /* Term chips */
-        .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: var(--surface-hover);
-            border: 1px solid var(--border);
-            border-radius: 999px;
-            padding: 6px 10px 6px 12px;
-            font-size: 13px;
-        }
-        .chip .chip-text { cursor: text; }
-        .chip .chip-remove {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            font-size: 14px;
-            padding: 0 4px;
-        }
-        .chip .chip-remove:hover { color: var(--danger); }
-
-        /* Buttons */
-        button.primary {
-            background: var(--accent);
-            color: var(--bg);
-            border: none;
-            border-radius: 10px;
-            padding: 10px 20px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.15s ease;
-        }
-        button.primary:hover { filter: brightness(1.1); }
-        button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        button.secondary {
-            background: var(--surface);
-            color: var(--text);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 10px 20px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-        }
-        button.secondary:hover { background: var(--surface-hover); }
-
-        /* Step 3: Use */
-        .mic-row {
-            display: flex;
+        .stat span { color: var(--muted); font-size: 13px; }
+        .flow {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
             gap: 12px;
+            margin-bottom: 18px;
+        }
+        .flow-step {
+            padding: 14px 16px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--line);
+        }
+        .flow-step strong { display: block; font-size: 14px; margin-bottom: 4px; }
+        .flow-step span { color: var(--muted); font-size: 12px; line-height: 1.4; }
+        .grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 18px;
+        }
+        .sidebar, .content {
+            display: grid;
+            gap: 18px;
+        }
+        .panel { padding: 22px; }
+        .panel h2 {
+            font-size: 24px;
+            letter-spacing: -0.03em;
+            margin-bottom: 8px;
+        }
+        .panel p.sub {
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 18px;
+        }
+        .label {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--soft);
+            margin-bottom: 8px;
+            display: block;
+        }
+        input[type="text"], textarea, select {
+            width: 100%;
+            background: rgba(255,255,255,0.04);
+            color: var(--text);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 14px 16px;
+            font: inherit;
+        }
+        textarea { min-height: 120px; resize: vertical; }
+        button {
+            border: none;
+            font: inherit;
+            cursor: pointer;
+            transition: transform 0.12s ease, filter 0.12s ease, background 0.12s ease;
+        }
+        button:hover { filter: brightness(1.04); }
+        button:active { transform: translateY(1px); }
+        .primary {
+            background: var(--mint);
+            color: #062a1f;
+            font-weight: 800;
+            padding: 13px 18px;
+            border-radius: 16px;
+        }
+        .secondary {
+            background: rgba(255,255,255,0.04);
+            color: var(--text);
+            border: 1px solid var(--line);
+            padding: 13px 18px;
+            border-radius: 16px;
+            font-weight: 600;
+        }
+        .stack { display: grid; gap: 12px; }
+        .row { display: flex; gap: 10px; align-items: center; }
+        .profile-pills, .chip-list, .target-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .pill, .chip, .target {
+            border-radius: 999px;
+            padding: 8px 12px;
+            font-size: 13px;
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,0.04);
+        }
+        .pill.active {
+            background: var(--mint-dim);
+            border-color: var(--mint);
+            color: var(--mint);
+        }
+        .target {
+            display: inline-flex;
+            gap: 8px;
             align-items: center;
-            margin-bottom: 20px;
+            padding: 10px 12px;
+        }
+        .target input { accent-color: var(--mint); }
+        .import-drop {
+            min-height: 120px;
+            border: 1.5px dashed var(--line);
+            border-radius: 20px;
+            display: grid;
+            place-items: center;
+            text-align: center;
+            padding: 22px;
+            color: var(--muted);
+        }
+        .import-drop.dragover { border-color: var(--mint); background: var(--mint-dim); color: var(--text); }
+        .device-box {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 18px;
+        }
+        .meter {
+            width: 100%;
+            height: 14px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 999px;
+            overflow: hidden;
+            border: 1px solid var(--line);
+        }
+        .meter > div {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--mint), var(--sky));
+            transition: width 0.05s linear;
+        }
+        .compose-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 18px;
         }
         .mic-button {
-            width: 56px;
-            height: 56px;
+            width: 68px;
+            height: 68px;
             border-radius: 50%;
-            background: var(--accent);
-            color: var(--bg);
-            border: none;
-            font-size: 22px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.1s ease;
+            background: var(--mint);
+            color: #062a1f;
+            font-size: 30px;
+            font-weight: 800;
         }
-        .mic-button:active { transform: scale(0.95); }
-        .mic-button.recording { background: var(--danger); animation: pulse 1s infinite; }
-
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-            50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+        .mic-button.recording {
+            background: var(--rose);
+            color: white;
+            box-shadow: 0 0 0 10px rgba(255,95,114,0.12);
         }
-
-        select.app-select {
-            background: var(--surface);
-            color: var(--text);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 10px 14px;
-            font-family: inherit;
-            font-size: 13px;
+        .response-box {
+            min-height: 120px;
+            background: #090c12;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 16px;
+            line-height: 1.6;
+            font-size: 15px;
+            white-space: pre-wrap;
         }
-
-        /* Output panels */
-        .outputs {
+        .output-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
             margin-top: 16px;
         }
-        @media (max-width: 560px) {
-            .outputs { grid-template-columns: 1fr; }
+        .output-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            padding: 18px;
         }
-        .output {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 14px;
-            min-height: 80px;
-            font-size: 13px;
-            line-height: 1.5;
-        }
-        .output .label {
-            display: block;
-            font-size: 11px;
-            color: var(--text-dim);
+        .output-card h3 {
+            font-size: 14px;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 6px;
-            font-weight: 500;
+            letter-spacing: 0.12em;
+            color: var(--soft);
+            margin-bottom: 10px;
         }
-        .output.styled { grid-column: span 2; background: var(--accent-dim); border-color: var(--accent); }
-
-        /* Placeholder state */
-        .output .empty { color: var(--text-muted); font-style: italic; }
-
-        /* Hero 3-panel (RAW / IDENTITY / REWRITE) */
-        .hero-panel {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 14px;
-            min-height: 110px;
-            display: flex;
-            flex-direction: column;
+        .empty { color: var(--soft); font-style: italic; }
+        .memory-list {
+            display: grid;
+            gap: 10px;
         }
-        .hero-panel-label {
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.08em;
-            color: var(--text-dim);
+        .memory-item {
+            padding: 12px 14px;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--line);
         }
-        .hero-panel[data-kind="raw"] .hero-panel-label { color: #f87171; }
-        .hero-panel[data-kind="identity"] .hero-panel-label { color: #fbbf24; }
-        .hero-panel[data-kind="rewrite"] .hero-panel-label { color: var(--accent); }
-        .hero-panel-hint { font-size: 12px; color: var(--text-muted); margin-top: 2px; margin-bottom: 10px; }
-        .hero-panel-body { font-size: 13px; line-height: 1.5; flex: 1; }
-        .hero-empty { color: var(--text-muted); font-style: italic; }
-
-        @media (max-width: 640px) {
-            #hero-pipeline > div:last-child { grid-template-columns: 1fr !important; }
+        .memory-item strong { display: block; font-size: 14px; margin-bottom: 4px; }
+        .memory-item span { color: var(--muted); font-size: 12px; }
+        @media (max-width: 980px) {
+            .hero, .grid, .compose-grid, .flow { grid-template-columns: 1fr; }
+            .output-grid { grid-template-columns: 1fr; }
         }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="logo">Voice Right</div>
-            <div class="tagline">The agent that learns you — then translates how you speak 🗣️ into how you type ⌨️.</div>
-        </div>
-
-        <!-- Hero three-panel: RAW / IDENTITY / REWRITE — the pipeline made visible.
-             Fills in live the first time the user runs a style-transfer in Step 4,
-             but can also be triggered directly from the "Try it now" input below. -->
-        <div class="card" id="hero-pipeline" style="margin-bottom: 20px; border: 1px solid var(--border);">
-            <div style="display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap;">
-                <input type="text" id="hero-input" placeholder="Type how you'd say it aloud. Voice Right maps it to how you'd write it — per app."
-                    style="flex: 1; min-width: 260px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-family: inherit; font-size: 13px;">
-                <select class="app-select" id="hero-app-select" style="min-width: 170px;">
-                    <option value="auto">Auto (FunctionGemma)</option>
-                    <option value="gmail">Gmail</option>
-                    <option value="imessage">iMessage</option>
-                    <option value="discord">Discord</option>
-                    <option value="linkedin">LinkedIn</option>
-                    <option value="twitter">X / Twitter</option>
-                    <option value="slack">Slack</option>
-                    <option value="terminal">Terminal</option>
-                </select>
-                <button class="primary" id="hero-try-btn">Try with your voice</button>
+    <div class="app">
+        <section class="hero">
+            <div class="hero-card">
+                <div class="eyebrow">Portable Voice Identity</div>
+                <h1>One profile learns your words, your people, and how you write everywhere.</h1>
+                <p>
+                    Upload screenshots, emails, docs, or writing samples into a profile. Then speak once and generate
+                    multiple outputs that sound like you in the apps you selected.
+                </p>
             </div>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
-                <div class="hero-panel" data-kind="raw">
-                    <div class="hero-panel-label">YOUR VOICE OUTPUT</div>
-                    <div class="hero-panel-hint">How you actually spoke it</div>
-                    <div class="hero-panel-body" id="hero-raw">
-                        <span class="hero-empty">Messy dictation in.<br>Generic STT won't know you.</span>
-                    </div>
+            <div class="summary">
+                <div>
+                    <div class="eyebrow">Active Profile</div>
+                    <h2 id="active-profile-title" style="font-size:32px; letter-spacing:-0.04em; margin-top:8px;">Profile</h2>
                 </div>
-                <div class="hero-panel" data-kind="identity">
-                    <div class="hero-panel-label">THE MAP</div>
-                    <div class="hero-panel-hint">Your passport — the function that connects voice to writing</div>
-                    <div class="hero-panel-body" id="hero-identity">
-                        <span class="hero-empty">Vocabulary. Corrections.<br>Voiceprint. Style.</span>
-                    </div>
-                </div>
-                <div class="hero-panel" data-kind="rewrite">
-                    <div class="hero-panel-label">YOUR WRITING OUTPUT</div>
-                    <div class="hero-panel-hint">How you would have typed it, per app</div>
-                    <div class="hero-panel-body" id="hero-rewrite">
-                        <span class="hero-empty">Your voice in,<br>your writing out.</span>
-                    </div>
+                <div class="stat-grid">
+                    <div class="stat"><strong id="stat-terms">0</strong><span>terms</span></div>
+                    <div class="stat"><strong id="stat-people">0</strong><span>people</span></div>
+                    <div class="stat"><strong id="stat-sources">0</strong><span>sources</span></div>
+                    <div class="stat"><strong id="stat-corrections">0</strong><span>corrections</span></div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <div class="passport-bar">
-            <div><strong>Your passport</strong> · <span id="profile-name">default</span></div>
-            <div class="passport-stats">
-                <div class="passport-stat"><span id="stat-terms">0</span> terms</div>
-                <div class="passport-stat"><span id="stat-corrections">0</span> corrections</div>
-                <div class="passport-stat"><span id="stat-apps">0</span> apps</div>
-                <div class="passport-stat" id="stat-voiceprint" title="Voiceprint: 256-dim speaker embedding — your acoustic identity, on-device only."><span id="stat-voiceprint-icon">🫥</span> <span id="stat-voiceprint-label">no voiceprint</span></div>
-            </div>
-        </div>
+        <section class="flow">
+            <div class="flow-step"><strong>1. Profile</strong><span>Select whose memory and output style you are using.</span></div>
+            <div class="flow-step"><strong>2. Memory</strong><span>Import screenshots, docs, and writing samples into that profile.</span></div>
+            <div class="flow-step"><strong>3. Device Check</strong><span>Verify the chosen mic actually works before composing.</span></div>
+            <div class="flow-step"><strong>4. Compose</strong><span>Speak once, understand intent, then generate multiple app outputs.</span></div>
+        </section>
 
-        <div class="steps">
-            <div class="step active" data-step="1">1. Try</div>
-            <div class="step" data-step="2">2. Teach</div>
-            <div class="step" data-step="3">3. Tune</div>
-            <div class="step" data-step="4">4. Use</div>
-        </div>
-
-        <!-- Step 1: Mic test -->
-        <div class="step-content active" id="step-1">
-            <div class="card">
-                <h2>Pick your mic</h2>
-                <p class="hint">Voice Right needs microphone access. Pick your input device, speak a few words, and make sure the green level bar moves. This test runs locally — no audio leaves your device.</p>
-
-                <div id="mic-enable-row" style="margin-bottom: 16px;">
-                    <button class="primary" id="mic-enable-btn">Enable microphone</button>
-                    <span id="mic-perm-status" style="color: var(--text-dim); margin-left: 12px; font-size: 13px;"></span>
-                </div>
-
-                <div id="mic-controls" style="display: none;">
-                    <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Input device</label>
-                    <select class="app-select" id="mic-device-select" style="width: 100%; margin-bottom: 16px;"></select>
-
-                    <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Live input level</label>
-                    <div id="level-bar-container" style="width: 100%; height: 12px; background: var(--surface-hover); border-radius: 999px; overflow: hidden; border: 1px solid var(--border);">
-                        <div id="level-bar-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #34d399); transition: width 0.05s linear;"></div>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap;">
-                        <button class="secondary" id="mic-stop-btn">Stop listening</button>
-                        <button class="primary" id="mic-sample-btn" title="Record 3 seconds of your voice → 256-dim voiceprint → saved to your passport. Runs on-device.">Sample my voice</button>
-                        <div id="mic-status" style="font-size: 13px; color: var(--text-dim);">Waiting for audio…</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Step 2: Learn -->
-        <div class="step-content" id="step-2">
-            <div class="card">
-                <h2>Show Voice Right your world</h2>
-                <p class="hint">Drop a screenshot of your Gmail, Notion, Slack — anything with your vocabulary. Gemma 4 E4B reads it locally and extracts your terms. No network calls.</p>
-                <div class="dropzone" id="dropzone">
-                    <div>Drop a screenshot or click to select</div>
-                    <input type="file" id="file-input" accept="image/*" hidden>
-                </div>
-
-                <div style="display: flex; gap: 8px; margin-top: 14px;">
-                    <input type="text" id="manual-term-input" placeholder="Add a term manually (e.g. YBuffet)"
-                        style="flex: 1; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; font-family: inherit; font-size: 13px;">
-                    <button class="secondary" id="manual-term-add-btn">Add</button>
-                </div>
-
-                <div class="chips" id="chips"></div>
-            </div>
-        </div>
-
-        <!-- Step 3: Calibrate -->
-        <div class="step-content" id="step-3">
-            <div class="card">
-                <h2>Teach it your voice</h2>
-                <p class="hint">Read the sentences out loud. Voice Right benchmarks accuracy on YOUR vocabulary before and after applying your passport. Usually takes 30 seconds.</p>
-
-                <div id="calibration-script" style="background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 14px; min-height: 110px; line-height: 1.8;">
-                    <span style="color: var(--text-muted); font-style: italic;">Add a few terms first (Step 2) — we'll generate sentences using them.</span>
-                </div>
-
-                <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 14px;">
-                    <button class="mic-button" id="calibrate-record-btn" title="Record calibration">🎙</button>
-                    <button class="secondary" id="calibrate-regenerate-btn">Regenerate script</button>
-                    <div id="calibrate-status" style="color: var(--text-dim); font-size: 13px;"></div>
-                </div>
-
-                <!-- Accuracy bars appear after benchmark -->
-                <div id="calibrate-results" style="display: none;">
-                    <div style="display: grid; grid-template-columns: 100px 1fr 50px; gap: 10px; align-items: center; margin-bottom: 10px;">
-                        <span style="font-size: 12px; color: var(--text-dim);">Before</span>
-                        <div style="height: 14px; background: var(--surface-hover); border-radius: 999px; overflow: hidden;">
-                            <div id="bar-before" style="height: 100%; width: 0%; background: #ef4444; transition: width 0.6s ease-out;"></div>
+        <div class="grid">
+            <aside class="sidebar">
+                <section class="panel">
+                    <h2>Profiles</h2>
+                    <p class="sub">All vocabulary, corrections, writing samples, and outputs are scoped to the active profile.</p>
+                    <div class="stack">
+                        <div class="profile-pills" id="profile-pills"></div>
+                        <div class="row">
+                            <input type="text" id="new-profile-name" placeholder="Create a profile">
+                            <button class="primary" id="create-profile-btn">Create</button>
                         </div>
-                        <span id="acc-before" style="font-size: 13px; font-weight: 600; text-align: right;">—</span>
                     </div>
-                    <div style="display: grid; grid-template-columns: 100px 1fr 50px; gap: 10px; align-items: center;">
-                        <span style="font-size: 12px; color: var(--text-dim);">After</span>
-                        <div style="height: 14px; background: var(--surface-hover); border-radius: 999px; overflow: hidden;">
-                            <div id="bar-after" style="height: 100%; width: 0%; background: var(--accent); transition: width 0.6s ease-out;"></div>
-                        </div>
-                        <span id="acc-after" style="font-size: 13px; font-weight: 600; text-align: right;">—</span>
-                    </div>
-                    <div id="patterns-learned" style="margin-top: 12px; font-size: 13px; color: var(--text-dim);"></div>
-                </div>
-            </div>
-        </div>
+                </section>
 
-        <!-- Step 4: Use -->
-        <div class="step-content" id="step-4">
-            <div class="card">
-                <h2>Speak → styled text</h2>
-                <p class="hint">Pick the target app, hit the mic, say what you mean. Voice Right transcribes and rewrites it to match how you'd type there.</p>
-                <div class="mic-row">
-                    <button class="mic-button" id="mic-button" title="Record">🎙</button>
-                    <select class="app-select" id="app-select">
-                        <option value="auto">Auto (FunctionGemma)</option>
-                        <option value="gmail">Gmail</option>
-                        <option value="imessage">iMessage</option>
-                        <option value="discord">Discord</option>
-                        <option value="linkedin">LinkedIn</option>
-                        <option value="twitter">X / Twitter</option>
-                        <option value="slack">Slack</option>
-                        <option value="terminal">Terminal</option>
-                    </select>
-                    <input type="text" id="text-input" placeholder="Or type here to test style transfer..."
-                        style="flex: 1; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-family: inherit; font-size: 13px;">
-                    <button class="primary" id="style-button">Style it →</button>
-                </div>
-                <div class="outputs">
-                    <div class="output">
-                        <span class="label">Parakeet</span>
-                        <span id="out-parakeet" class="empty">(not yet wired)</span>
+                <section class="panel">
+                    <h2>Profile Memory</h2>
+                    <p class="sub">Drag in screenshots, text, PDFs, docs, or writing samples. Gemma extracts terms, people, and reusable context into the active profile.</p>
+                    <div class="import-drop" id="import-drop">
+                        <div>
+                            <strong style="display:block; margin-bottom:6px;">Drop files here or click to upload</strong>
+                            <span>Images, txt, md, html, pdf, doc, docx</span>
+                        </div>
+                        <input type="file" id="import-file" hidden>
                     </div>
-                    <div class="output">
-                        <span class="label">Whisper</span>
-                        <span id="out-whisper" class="empty">(not yet wired)</span>
+                    <div class="stack" style="margin-top: 12px;">
+                        <label class="label" for="manual-memory">Paste reference text</label>
+                        <textarea id="manual-memory" placeholder="Paste an email, message thread, notes, or other writing sample."></textarea>
+                        <button class="secondary" id="save-memory-text">Import pasted text</button>
                     </div>
-                    <div class="output styled">
-                        <span class="label">Styled for <span id="out-app-label">gmail</span></span>
-                        <span id="out-styled" class="empty">Output will appear here.</span>
+                    <div class="chip-list" id="term-chips" style="margin-top: 14px;"></div>
+                    <div class="memory-list" id="memory-list" style="margin-top: 14px;"></div>
+                </section>
+            </aside>
+
+            <main class="content">
+                <section class="panel">
+                    <h2>Device Check</h2>
+                    <p class="sub">The first job is to verify the selected input device works. Watch the meter, switch devices if needed, and only then move to compose.</p>
+                    <div class="device-box">
+                        <label class="label" for="mic-device-select">Input Device</label>
+                        <select id="mic-device-select"></select>
+                        <div class="row" style="margin-top: 12px;">
+                            <button class="primary" id="device-enable-btn">Start device check</button>
+                            <button class="secondary" id="device-stop-btn">Stop</button>
+                            <span id="device-status" style="color: var(--muted); font-size: 14px;">Not started.</span>
+                        </div>
+                        <div class="meter" style="margin-top: 14px;"><div id="level-fill"></div></div>
                     </div>
-                </div>
-            </div>
+                </section>
+
+                <section class="panel">
+                    <h2>Compose Once, Output Everywhere</h2>
+                    <p class="sub">Choose one or more output targets. Cactus handles transcript accuracy using profile memory, then Gemma infers the intent and writes each output in the right app voice.</p>
+                    <div class="compose-grid">
+                        <div class="stack">
+                            <label class="label">Select Outputs</label>
+                            <div class="target-list" id="target-list">
+                                <label class="target"><input type="checkbox" value="email" checked> Email</label>
+                                <label class="target"><input type="checkbox" value="message" checked> Message</label>
+                                <label class="target"><input type="checkbox" value="slack"> Slack</label>
+                                <label class="target"><input type="checkbox" value="discord"> Discord</label>
+                            </div>
+                            <label class="label" for="compose-text">Typed fallback</label>
+                            <textarea id="compose-text" placeholder="Or type what you want to say here. Example: Send an update to my reviewer that the document is signed."></textarea>
+                            <div class="row">
+                                <button class="mic-button" id="compose-mic">🎙</button>
+                                <button class="primary" id="compose-submit">Generate outputs</button>
+                                <span id="compose-status" style="color: var(--muted); font-size: 14px;">Ready.</span>
+                            </div>
+                        </div>
+
+                        <div class="stack">
+                            <div>
+                                <span class="label">Accurate Transcript</span>
+                                <div class="response-box" id="transcript-box"><span class="empty">Your corrected transcript will appear here.</span></div>
+                            </div>
+                            <div>
+                                <span class="label">Intent</span>
+                                <div class="response-box" id="intent-box"><span class="empty">Voice Right will summarize what you are trying to communicate.</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="output-grid" id="output-grid">
+                        <div class="output-card">
+                            <h3>Email</h3>
+                            <div class="response-box" id="output-email"><span class="empty">Select Email and generate outputs.</span></div>
+                        </div>
+                        <div class="output-card">
+                            <h3>Message</h3>
+                            <div class="response-box" id="output-message"><span class="empty">Select Message and generate outputs.</span></div>
+                        </div>
+                        <div class="output-card">
+                            <h3>Slack</h3>
+                            <div class="response-box" id="output-slack"><span class="empty">Select Slack and generate outputs.</span></div>
+                        </div>
+                        <div class="output-card">
+                            <h3>Discord</h3>
+                            <div class="response-box" id="output-discord"><span class="empty">Select Discord and generate outputs.</span></div>
+                        </div>
+                    </div>
+                </section>
+            </main>
         </div>
     </div>
 
     <script>
-        // ============================================================
-        // State
-        // ============================================================
+        let activeProfile = "default";
         let profile = null;
+        let composeRecording = false;
+        let composeRecorder = null;
+        const micState = { stream: null, audioCtx: null, analyser: null, rafId: null, selectedDeviceId: "" };
 
-        // ============================================================
-        // Profile bar
-        // ============================================================
-        async function refreshProfile() {
-            try {
-                const r = await fetch('/api/profile');
-                profile = await r.json();
-                document.getElementById('stat-terms').textContent = profile.terms?.length ?? 0;
-                document.getElementById('stat-corrections').textContent = profile.corrections?.length ?? 0;
-                document.getElementById('stat-apps').textContent = Object.keys(profile.style_per_app ?? {}).length;
-                // Voiceprint indicator
-                const vpSamples = profile.voiceprint_samples ?? 0;
-                const icon = document.getElementById('stat-voiceprint-icon');
-                const label = document.getElementById('stat-voiceprint-label');
-                if (vpSamples > 0) {
-                    icon.textContent = '🎙';
-                    label.textContent = `voiceprint ×${vpSamples}`;
-                    icon.parentElement.style.color = 'var(--accent)';
-                } else {
-                    icon.textContent = '🫥';
-                    label.textContent = 'no voiceprint';
-                    icon.parentElement.style.color = 'var(--text-dim)';
-                }
-                renderChips();
-            } catch (err) {
-                console.error('Failed to load profile', err);
-            }
+        function qs(id) { return document.getElementById(id); }
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
         }
 
-        function renderChips() {
-            const el = document.getElementById('chips');
-            el.innerHTML = '';
-            for (const term of (profile?.terms ?? [])) {
-                const chip = document.createElement('span');
-                chip.className = 'chip';
-                // data-id used by remove; data-original used by inline rename to detect no-op edits.
-                chip.innerHTML = `<span class="chip-text" contenteditable="true" data-id="${term.id}" data-original="${escapeAttr(term.text)}">${escapeHtml(term.text)}</span><button class="chip-remove" data-id="${term.id}" title="Remove">✕</button>`;
-                el.appendChild(chip);
-            }
+        async function fetchJson(url, options) {
+            const res = await fetch(url, options);
+            return await res.json();
         }
 
-        function escapeHtml(s) {
-            return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+        function selectedTargets() {
+            return Array.from(document.querySelectorAll('#target-list input:checked')).map((input) => input.value);
         }
-        function escapeAttr(s) { return escapeHtml(s); }
 
-        // ============================================================
-        // Step navigation
-        // ============================================================
-        document.querySelectorAll('.step').forEach(s => {
-            s.addEventListener('click', () => {
-                const n = s.dataset.step;
-                document.querySelectorAll('.step').forEach(x => x.classList.remove('active'));
-                s.classList.add('active');
-                document.querySelectorAll('.step-content').forEach(x => x.classList.remove('active'));
-                document.getElementById(`step-${n}`).classList.add('active');
+        async function refreshProfiles() {
+            const profiles = await fetchJson('/api/profiles');
+            const wrap = qs('profile-pills');
+            wrap.innerHTML = '';
+            profiles.forEach((item) => {
+                const button = document.createElement('button');
+                button.className = `pill ${item.id === activeProfile ? 'active' : ''}`;
+                button.textContent = `${item.name} · ${item.terms} terms`;
+                button.onclick = async () => {
+                    activeProfile = item.id;
+                    await refreshProfile();
+                    await refreshProfiles();
+                };
+                wrap.appendChild(button);
             });
-        });
+        }
 
-        // ============================================================
-        // Step 3 — style transfer
-        // ============================================================
-        document.getElementById('app-select').addEventListener('change', (e) => {
-            document.getElementById('out-app-label').textContent = e.target.value;
-        });
+        async function refreshProfile() {
+            profile = await fetchJson(`/api/profile?id=${encodeURIComponent(activeProfile)}`);
+            qs('active-profile-title').textContent = profile.name;
+            qs('stat-terms').textContent = profile.terms.length;
+            qs('stat-people').textContent = (profile.people || []).length;
+            qs('stat-sources').textContent = (profile.reference_sources || []).length;
+            qs('stat-corrections').textContent = profile.corrections.length;
+            renderTerms();
+            renderSources();
+        }
 
-        document.getElementById('style-button').addEventListener('click', async () => {
-            const text = document.getElementById('text-input').value.trim();
-            if (!text) return;
-            let app = document.getElementById('app-select').value;
-            const out = document.getElementById('out-styled');
-            const appLabel = document.getElementById('out-app-label');
-            out.textContent = 'Thinking... (first run loads Gemma 4 E4B, ~30s)';
-            out.classList.remove('empty');
-
-            try {
-                // Auto mode: FunctionGemma 270M picks the app first, then Gemma 4 E4B styles it.
-                if (app === 'auto') {
-                    out.textContent = 'FunctionGemma 270M routing…';
-                    const detectR = await fetch('/api/detect-app', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text }),
-                    });
-                    const detectJ = await detectR.json();
-                    if (detectJ.error || !detectJ.app) {
-                        out.textContent = `Auto-route error: ${detectJ.error || 'no app'}`;
-                        return;
-                    }
-                    app = detectJ.app;
-                    const path = detectJ.fallback ? 'keyword fallback' : `FunctionGemma (${detectJ.time_ms}ms)`;
-                    appLabel.textContent = `${app} · routed via ${path}`;
-                    out.textContent = `Routed to ${app}. Styling with Gemma 4 E4B…`;
-                } else {
-                    appLabel.textContent = app;
-                }
-
-                const r = await fetch('/api/style', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text, app })
-                });
-                const j = await r.json();
-                if (j.error) {
-                    out.textContent = `Error: ${j.error}`;
-                } else {
-                    out.textContent = j.styled;
-                }
-            } catch (err) {
-                out.textContent = `Error: ${err.message}`;
-            }
-        });
-
-        // ============================================================
-        // Step 2 — Learn: screenshot → Gemma 4 vision → term chips
-        // ============================================================
-        const dropzone = document.getElementById('dropzone');
-        const fileInput = document.getElementById('file-input');
-
-        async function uploadScreenshot(file) {
-            if (!file || !file.type?.startsWith('image/')) {
-                alert('Please drop an image file (PNG/JPG/etc).');
+        function renderTerms() {
+            const wrap = qs('term-chips');
+            wrap.innerHTML = '';
+            const items = (profile?.terms || []).slice(-18);
+            if (!items.length) {
+                wrap.innerHTML = '<span class="empty">No vocabulary yet. Import a screenshot or document.</span>';
                 return;
             }
-            const dzHtml = dropzone.innerHTML;
-            dropzone.innerHTML = `<div>Reading with Gemma 4 E4B... this takes a few seconds.</div>`;
-            dropzone.style.opacity = '0.7';
+            items.forEach((term) => {
+                const el = document.createElement('span');
+                el.className = 'chip';
+                el.textContent = term.text;
+                wrap.appendChild(el);
+            });
+        }
 
-            try {
-                const fd = new FormData();
-                fd.append('file', file);
-                const r = await fetch('/api/screenshot-to-terms', { method: 'POST', body: fd });
-                const j = await r.json();
-                if (j.error) {
-                    dropzone.innerHTML = `<div style="color: var(--danger)">Error: ${j.error}</div>`;
-                    return;
-                }
-                // Merge new terms into profile (dedupe by lowercased text)
-                if (!profile) await refreshProfile();
-                const existing = new Set((profile.terms || []).map(t => t.text.toLowerCase()));
-                const now = new Date().toISOString();
-                const added = [];
-                for (const text of (j.terms || [])) {
-                    if (existing.has(text.toLowerCase())) continue;
-                    profile.terms.push({
-                        id: `t_${Date.now()}_${added.length}`,
-                        text,
-                        source: 'screenshot',
-                        added: now,
-                    });
-                    existing.add(text.toLowerCase());
-                    added.push(text);
-                }
-                // Persist
-                await fetch('/api/profile', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(profile),
-                });
-                await refreshProfile();
-                dropzone.innerHTML = `<div>✓ Extracted ${j.terms.length} terms (${added.length} new). Drop another screenshot to add more.</div>`;
-            } catch (err) {
-                dropzone.innerHTML = `<div style="color: var(--danger)">Error: ${err.message}</div>`;
-            } finally {
-                dropzone.style.opacity = '1';
-                // Restore original label after 2.5s
-                setTimeout(() => { dropzone.innerHTML = dzHtml; }, 2500);
+        function renderSources() {
+            const wrap = qs('memory-list');
+            wrap.innerHTML = '';
+            const sources = (profile?.reference_sources || []).slice().reverse().slice(0, 6);
+            if (!sources.length) {
+                wrap.innerHTML = '<div class="empty">No imported memory yet.</div>';
+                return;
             }
+            sources.forEach((source) => {
+                const el = document.createElement('div');
+                el.className = 'memory-item';
+                el.innerHTML = `<strong>${escapeHtml(source.name)}</strong><span>${escapeHtml(source.type)} · ${source.terms_added} terms added</span>`;
+                wrap.appendChild(el);
+            });
         }
 
-        dropzone.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', (e) => {
-            const f = e.target.files?.[0];
-            if (f) uploadScreenshot(f);
-            fileInput.value = ''; // allow re-selecting same file
-        });
-        ['dragenter', 'dragover'].forEach(ev => {
-            dropzone.addEventListener(ev, (e) => {
-                e.preventDefault();
-                dropzone.classList.add('dragover');
-            });
-        });
-        ['dragleave', 'drop'].forEach(ev => {
-            dropzone.addEventListener(ev, (e) => {
-                e.preventDefault();
-                dropzone.classList.remove('dragover');
-            });
-        });
-        dropzone.addEventListener('drop', (e) => {
-            const f = e.dataTransfer?.files?.[0];
-            if (f) uploadScreenshot(f);
-        });
-
-        // Chip remove (delegated click)
-        document.getElementById('chips').addEventListener('click', async (e) => {
-            const btn = e.target.closest('.chip-remove');
-            if (!btn) return;
-            const id = btn.dataset.id;
-            profile.terms = (profile.terms || []).filter(t => t.id !== id);
-            await saveProfile();
-        });
-
-        // Inline rename — commit on Enter or blur, cancel on Escape.
-        document.getElementById('chips').addEventListener('keydown', (e) => {
-            const el = e.target.closest('.chip-text');
-            if (!el) return;
-            if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
-            else if (e.key === 'Escape') { el.textContent = el.dataset.original; el.blur(); }
-        });
-        document.getElementById('chips').addEventListener('blur', async (e) => {
-            const el = e.target.closest('.chip-text');
-            if (!el) return;
-            const id = el.dataset.id;
-            const newText = el.textContent.trim();
-            const original = el.dataset.original;
-            if (!newText) { el.textContent = original; return; }
-            if (newText === original) return;
-            const term = (profile.terms || []).find(t => t.id === id);
-            if (!term) return;
-            term.text = newText;
-            await saveProfile();
-        }, true); // useCapture=true so blur fires on descendant contenteditables
-
-        // Manual term add
-        async function addManualTerm(text) {
-            text = text.trim();
-            if (!text) return;
-            if (!profile) await refreshProfile();
-            const lower = text.toLowerCase();
-            const exists = (profile.terms || []).some(t => t.text.toLowerCase() === lower);
-            if (exists) return;
-            profile.terms.push({
-                id: `t_${Date.now()}`,
-                text,
-                source: 'manual',
-                added: new Date().toISOString(),
-            });
-            await saveProfile();
-        }
-        document.getElementById('manual-term-add-btn').addEventListener('click', async () => {
-            const input = document.getElementById('manual-term-input');
-            await addManualTerm(input.value);
-            input.value = '';
-            input.focus();
-        });
-        document.getElementById('manual-term-input').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') document.getElementById('manual-term-add-btn').click();
-        });
-
-        // Shared save helper — PUT the current profile and refresh the UI.
-        async function saveProfile() {
-            await fetch('/api/profile', {
-                method: 'PUT',
+        async function createProfile() {
+            const name = qs('new-profile-name').value.trim();
+            if (!name) return;
+            const created = await fetchJson('/api/profiles', {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(profile),
+                body: JSON.stringify({ name }),
             });
+            activeProfile = created.id;
+            qs('new-profile-name').value = '';
+            await refreshProfiles();
             await refreshProfile();
         }
 
-        // ============================================================
-        // Step 3 — Calibrate: generate personalized script + simulated accuracy bars
-        // ============================================================
-        const calibrationState = {
-            sentences: null,
-            currentIdx: 0,
-            generated: false,
-        };
-
-        async function generateCalibrationScript(force = false) {
-            const el = document.getElementById('calibration-script');
-            const status = document.getElementById('calibrate-status');
-
-            if (calibrationState.generated && !force) return;
-
-            el.innerHTML = `<span style="color: var(--text-dim); font-style: italic;">Generating your personalized script with Gemma 3 1B…</span>`;
-            status.textContent = '';
-
-            try {
-                const r = await fetch('/api/calibrate/generate', { method: 'POST' });
-                const j = await r.json();
-                if (j.error || !j.sentences || j.sentences.length === 0) {
-                    el.innerHTML = `<span style="color: var(--danger)">Couldn't generate script: ${j.error || 'no sentences'}. Add some terms in Step 2 first.</span>`;
-                    return;
-                }
-                calibrationState.sentences = j.sentences;
-                calibrationState.currentIdx = 0;
-                calibrationState.generated = true;
-                renderCalibrationScript();
-            } catch (err) {
-                el.innerHTML = `<span style="color: var(--danger)">Error: ${err.message}</span>`;
-            }
-        }
-
-        function renderCalibrationScript() {
-            const el = document.getElementById('calibration-script');
-            if (!calibrationState.sentences) return;
-            el.innerHTML = calibrationState.sentences.map((s, i) => {
-                let style = '';
-                if (i < calibrationState.currentIdx) {
-                    // Already read
-                    style = 'opacity: 0.35; text-decoration: line-through; color: var(--accent);';
-                } else if (i === calibrationState.currentIdx) {
-                    style = 'opacity: 1; color: var(--text); font-weight: 500;';
-                } else {
-                    style = 'opacity: 0.5; color: var(--text-dim);';
-                }
-                return `<div class="cal-sentence" data-idx="${i}" style="cursor: pointer; padding: 3px 0; ${style}">${s}</div>`;
-            }).join('');
-        }
-
-        document.getElementById('calibration-script').addEventListener('click', (e) => {
-            const el = e.target.closest('.cal-sentence');
-            if (!el) return;
-            calibrationState.currentIdx = parseInt(el.dataset.idx, 10);
-            renderCalibrationScript();
-        });
-
-        document.getElementById('calibrate-regenerate-btn').addEventListener('click', () => {
-            generateCalibrationScript(true);
-        });
-
-        // Record flow: simulated benchmark while stt.py is not wired.
-        // When stt.py lands, swap this with real MediaRecorder → POST audio.
-        let calRecording = false;
-        document.getElementById('calibrate-record-btn').addEventListener('click', async () => {
-            const btn = document.getElementById('calibrate-record-btn');
-            const status = document.getElementById('calibrate-status');
-            if (!calibrationState.sentences) {
-                status.textContent = 'Generate a script first.';
-                status.style.color = 'var(--danger)';
+        async function importFile(file) {
+            const form = new FormData();
+            form.append('profile', activeProfile);
+            form.append('file', file);
+            const res = await fetchJson('/api/import-memory', { method: 'POST', body: form });
+            if (res.error) {
+                alert(res.error);
                 return;
             }
-            if (!calRecording) {
-                calRecording = true;
-                btn.classList.add('recording');
-                status.textContent = 'Recording… click mic again to finish.';
-                status.style.color = 'var(--text-dim)';
-                calibrationState.currentIdx = 0;
-                renderCalibrationScript();
-            } else {
-                calRecording = false;
-                btn.classList.remove('recording');
-                status.textContent = 'Benchmarking…';
-                try {
-                    const r = await fetch('/api/calibrate/benchmark', { method: 'POST' });
-                    const j = await r.json();
-                    if (j.error) {
-                        status.textContent = `Error: ${j.error}`;
-                        status.style.color = 'var(--danger)';
-                        return;
-                    }
-                    document.getElementById('bar-before').style.width = `${j.accuracy_before}%`;
-                    document.getElementById('bar-after').style.width = `${j.accuracy_after}%`;
-                    document.getElementById('acc-before').textContent = `${j.accuracy_before}%`;
-                    document.getElementById('acc-after').textContent = `${j.accuracy_after}%`;
-                    document.getElementById('patterns-learned').textContent =
-                        `Patterns learned from your passport: ${j.patterns_learned}` +
-                        (j.stt_wired ? '' : '  (simulated — stt.py not wired yet)');
-                    document.getElementById('calibrate-results').style.display = 'block';
-                    status.textContent = `✓ Accuracy jumped ${j.accuracy_before}% → ${j.accuracy_after}%`;
-                    status.style.color = 'var(--accent)';
-                } catch (err) {
-                    status.textContent = `Error: ${err.message}`;
-                    status.style.color = 'var(--danger)';
-                }
-            }
-        });
+            await refreshProfile();
+        }
 
-        // Auto-generate when user first navigates to Step 3.
-        document.querySelectorAll('.step').forEach(s => {
-            s.addEventListener('click', () => {
-                if (s.dataset.step === '3' && !calibrationState.generated) {
-                    // Kick off async, don't block the step switch.
-                    setTimeout(() => generateCalibrationScript(), 50);
-                }
-            });
-        });
-
-        // ============================================================
-        // Step 1 — Microphone test (device selector + level meter)
-        // ============================================================
-        const micState = {
-            stream: null,
-            audioCtx: null,
-            analyser: null,
-            rafId: null,
-            selectedDeviceId: null,
-            levelSeen: false,
-        };
-
-        function dedupeAudioDevices(devices) {
-            // macOS often surfaces "default" + the real device pointing at the same source.
-            // Keep one entry per unique (groupId || deviceId) so the dropdown doesn't double-up.
-            const seen = new Set();
-            const result = [];
-            for (const d of devices.filter(d => d.kind === 'audioinput')) {
-                const key = d.groupId || d.deviceId;
-                if (seen.has(key)) continue;
-                seen.add(key);
-                result.push(d);
-            }
-            return result;
+        async function importTextMemory() {
+            const text = qs('manual-memory').value.trim();
+            if (!text) return;
+            const blob = new File([text], `pasted-memory-${Date.now()}.txt`, { type: 'text/plain' });
+            await importFile(blob);
+            qs('manual-memory').value = '';
         }
 
         async function populateDeviceList() {
+            await navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => stream.getTracks().forEach((t) => t.stop()));
             const devices = await navigator.mediaDevices.enumerateDevices();
-            const mics = dedupeAudioDevices(devices);
-            const sel = document.getElementById('mic-device-select');
-            sel.innerHTML = '';
-            for (const d of mics) {
-                const opt = document.createElement('option');
-                opt.value = d.deviceId;
-                opt.textContent = d.label || `Microphone (${d.deviceId.slice(0, 8)})`;
-                sel.appendChild(opt);
-            }
-            if (mics.length && !micState.selectedDeviceId) {
+            const mics = devices.filter((device) => device.kind === 'audioinput');
+            const select = qs('mic-device-select');
+            select.innerHTML = '';
+            mics.forEach((mic) => {
+                const option = document.createElement('option');
+                option.value = mic.deviceId;
+                option.textContent = mic.label || `Microphone ${mic.deviceId.slice(0, 8)}`;
+                select.appendChild(option);
+            });
+            if (mics[0]) {
                 micState.selectedDeviceId = mics[0].deviceId;
-                sel.value = micState.selectedDeviceId;
+                select.value = micState.selectedDeviceId;
             }
         }
 
-        async function attachMic(deviceId) {
-            // Tear down any existing analyser/stream
-            if (micState.rafId) cancelAnimationFrame(micState.rafId);
-            if (micState.stream) {
-                micState.stream.getTracks().forEach(t => t.stop());
-            }
-            if (micState.audioCtx && micState.audioCtx.state !== 'closed') {
-                await micState.audioCtx.close();
-            }
-
-            const constraints = {
-                audio: deviceId ? { deviceId: { exact: deviceId } } : true,
-            };
-            micState.stream = await navigator.mediaDevices.getUserMedia(constraints);
+        async function startDeviceCheck(deviceId) {
+            await stopDeviceCheck();
+            micState.stream = await navigator.mediaDevices.getUserMedia({ audio: deviceId ? { deviceId: { exact: deviceId } } : true });
             micState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             micState.analyser = micState.audioCtx.createAnalyser();
             micState.analyser.fftSize = 256;
-
-            const source = micState.audioCtx.createMediaStreamSource(micState.stream);
-            source.connect(micState.analyser);
-
+            micState.audioCtx.createMediaStreamSource(micState.stream).connect(micState.analyser);
             const data = new Uint8Array(micState.analyser.frequencyBinCount);
-            const fill = document.getElementById('level-bar-fill');
-            const status = document.getElementById('mic-status');
-            micState.levelSeen = false;
 
             function tick() {
                 micState.analyser.getByteFrequencyData(data);
-                let sum = 0;
-                for (let i = 0; i < data.length; i++) sum += data[i];
-                const avg = sum / data.length;          // 0..255
-                const pct = Math.min(100, avg * 0.78);  // scale so normal speech ≈ 70-90%
-                fill.style.width = `${pct}%`;
-
-                if (avg > 10 && !micState.levelSeen) {
-                    micState.levelSeen = true;
-                    status.textContent = '✓ Mic is working. Say anything and watch the bar.';
-                    status.style.color = 'var(--accent)';
-                }
+                const avg = data.reduce((sum, value) => sum + value, 0) / data.length;
+                qs('level-fill').style.width = `${Math.min(100, avg * 0.82)}%`;
+                qs('device-status').textContent = avg > 10 ? 'Mic signal detected.' : 'Listening for input...';
                 micState.rafId = requestAnimationFrame(tick);
             }
-            tick();
 
-            // Save selected device for downstream recording
+            tick();
             window.__voiceRightMicDeviceId = deviceId;
         }
 
-        document.getElementById('mic-enable-btn').addEventListener('click', async () => {
-            const statusEl = document.getElementById('mic-perm-status');
-            try {
-                // First call triggers the browser permission prompt
-                await navigator.mediaDevices.getUserMedia({ audio: true })
-                    .then(s => s.getTracks().forEach(t => t.stop()));
-                await populateDeviceList();
-                document.getElementById('mic-enable-row').style.display = 'none';
-                document.getElementById('mic-controls').style.display = 'block';
-                await attachMic(micState.selectedDeviceId);
-                statusEl.textContent = '';
-            } catch (err) {
-                statusEl.textContent = `Permission denied or no mic found (${err.name || 'error'}).`;
-                statusEl.style.color = 'var(--danger)';
-            }
-        });
-
-        document.getElementById('mic-device-select').addEventListener('change', async (e) => {
-            micState.selectedDeviceId = e.target.value;
-            document.getElementById('mic-status').textContent = 'Switching…';
-            document.getElementById('mic-status').style.color = 'var(--text-dim)';
-            try {
-                await attachMic(micState.selectedDeviceId);
-            } catch (err) {
-                document.getElementById('mic-status').textContent = `Couldn't open that device (${err.name})`;
-                document.getElementById('mic-status').style.color = 'var(--danger)';
-            }
-        });
-
-        // Stop everything: cancel the RAF loop, stop the mic tracks, close the audio context.
-        // Resets the UI to the pre-enable state so the user can start fresh.
-        async function detachMic(opts = {}) {
-            const { reason = 'Mic stopped.' } = opts;
-            if (micState.rafId) {
-                cancelAnimationFrame(micState.rafId);
-                micState.rafId = null;
-            }
-            if (micState.stream) {
-                micState.stream.getTracks().forEach(t => t.stop());
-                micState.stream = null;
-            }
-            if (micState.audioCtx && micState.audioCtx.state !== 'closed') {
-                try { await micState.audioCtx.close(); } catch {}
-            }
+        async function stopDeviceCheck() {
+            if (micState.rafId) cancelAnimationFrame(micState.rafId);
+            micState.rafId = null;
+            if (micState.stream) micState.stream.getTracks().forEach((track) => track.stop());
+            micState.stream = null;
+            if (micState.audioCtx && micState.audioCtx.state !== 'closed') await micState.audioCtx.close();
             micState.audioCtx = null;
             micState.analyser = null;
-            micState.levelSeen = false;
-            window.__voiceRightMicDeviceId = null;
-
-            // Reset the level bar and show the Enable button again so the user can restart.
-            const fill = document.getElementById('level-bar-fill');
-            if (fill) fill.style.width = '0%';
-            document.getElementById('mic-controls').style.display = 'none';
-            document.getElementById('mic-enable-row').style.display = '';
-            const permStatus = document.getElementById('mic-perm-status');
-            if (permStatus) {
-                permStatus.textContent = reason;
-                permStatus.style.color = 'var(--text-dim)';
-            }
+            qs('level-fill').style.width = '0%';
         }
 
-        document.getElementById('mic-stop-btn').addEventListener('click', () => {
-            detachMic({ reason: 'Mic stopped. Click Enable microphone to test again.' });
-        });
+        async function startWavRecording(deviceId) {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: deviceId ? { deviceId: { exact: deviceId } } : true });
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioCtx.createMediaStreamSource(stream);
+            const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+            const chunks = [];
 
-        // Sample-my-voice: record 3 seconds → POST to /api/voiceprint → passport updated.
-        // Reuses the same stream that Step 1's level meter is using, so no second permission prompt.
-        document.getElementById('mic-sample-btn').addEventListener('click', async () => {
-            const status = document.getElementById('mic-status');
-            const btn = document.getElementById('mic-sample-btn');
+            source.connect(processor);
+            processor.connect(audioCtx.destination);
 
-            if (!micState.stream) {
-                status.textContent = 'Click "Enable microphone" first.';
-                status.style.color = 'var(--danger)';
+            processor.onaudioprocess = (event) => {
+                chunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+            };
+
+            return {
+                async stop() {
+                    processor.disconnect();
+                    source.disconnect();
+                    stream.getTracks().forEach((track) => track.stop());
+                    await audioCtx.close();
+                    let length = 0;
+                    chunks.forEach((chunk) => length += chunk.length);
+                    const merged = new Float32Array(length);
+                    let offset = 0;
+                    chunks.forEach((chunk) => {
+                        merged.set(chunk, offset);
+                        offset += chunk.length;
+                    });
+                    return encodeWav(merged, audioCtx.sampleRate);
+                }
+            };
+        }
+
+        function encodeWav(samples, sampleRate) {
+            const buffer = new ArrayBuffer(44 + samples.length * 2);
+            const view = new DataView(buffer);
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + samples.length * 2, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, samples.length * 2, true);
+            let offset = 44;
+            for (let i = 0; i < samples.length; i++, offset += 2) {
+                const s = Math.max(-1, Math.min(1, samples[i]));
+                view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+            }
+            return new File([view], `voice-right-${Date.now()}.wav`, { type: 'audio/wav' });
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
+        }
+
+        async function composeFromInput(file = null) {
+            const status = qs('compose-status');
+            status.textContent = 'Generating outputs...';
+            const form = new FormData();
+            form.append('profile', activeProfile);
+            form.append('targets', selectedTargets().join(','));
+            form.append('text', qs('compose-text').value.trim());
+            if (file) form.append('file', file, file.name);
+            const result = await fetchJson('/api/compose', { method: 'POST', body: form });
+            if (result.error) {
+                status.textContent = result.error;
+                return;
+            }
+            qs('transcript-box').textContent = result.transcript || '';
+            qs('intent-box').textContent = result.intent || '';
+            ['email', 'message', 'slack', 'discord'].forEach((target) => {
+                const box = qs(`output-${target}`);
+                box.textContent = result.outputs?.[target] || 'Not selected.';
+            });
+            status.textContent = 'Done.';
+        }
+
+        async function toggleComposeRecording() {
+            const button = qs('compose-mic');
+            if (!composeRecording) {
+                composeRecorder = await startWavRecording(window.__voiceRightMicDeviceId || micState.selectedDeviceId);
+                composeRecording = true;
+                button.classList.add('recording');
+                qs('compose-status').textContent = 'Recording... click again to stop.';
                 return;
             }
 
-            btn.disabled = true;
-            btn.textContent = 'Recording 3 s…';
-            status.textContent = 'Say a few words naturally — voiceprint samples in 3 seconds.';
-            status.style.color = 'var(--text-dim)';
-
-            let chunks = [];
-            const rec = new MediaRecorder(micState.stream);
-            rec.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-            rec.onstop = async () => {
-                const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
-                btn.textContent = 'Processing…';
-                status.textContent = 'Computing 256-dim voiceprint on-device…';
-                try {
-                    const fd = new FormData();
-                    fd.append('file', blob, 'sample.webm');
-                    const r = await fetch('/api/voiceprint', { method: 'POST', body: fd });
-                    const j = await r.json();
-                    if (j.error) {
-                        status.textContent = `Voiceprint error: ${j.error}`;
-                        status.style.color = 'var(--danger)';
-                    } else {
-                        status.textContent = `✓ Voiceprint saved (${j.voiceprint_dim}-dim, sample #${j.voiceprint_samples}). Runs on-device only.`;
-                        status.style.color = 'var(--accent)';
-                        await refreshProfile();
-                    }
-                } catch (err) {
-                    status.textContent = `Error: ${err.message}`;
-                    status.style.color = 'var(--danger)';
-                } finally {
-                    btn.disabled = false;
-                    btn.textContent = 'Sample my voice';
-                }
-            };
-
-            rec.start();
-            setTimeout(() => { if (rec.state === 'recording') rec.stop(); }, 3000);
-        });
-
-        // Auto-stop when the user navigates away from Step 1 — nobody wants a hot
-        // mic running in the background while they're on Learn/Calibrate/Use.
-        document.querySelectorAll('.step').forEach(s => {
-            s.addEventListener('click', () => {
-                if (s.dataset.step !== '1' && micState.stream) {
-                    detachMic({ reason: 'Mic auto-stopped when you left Step 1.' });
-                }
-            });
-        });
-
-        // Also stop when the tab is hidden / closed.
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden && micState.stream) detachMic({ reason: 'Mic stopped (tab hidden).' });
-        });
-        window.addEventListener('beforeunload', () => {
-            if (micState.stream) micState.stream.getTracks().forEach(t => t.stop());
-        });
-
-        // Refresh device list when a device is plugged / unplugged
-        if (navigator.mediaDevices?.addEventListener) {
-            navigator.mediaDevices.addEventListener('devicechange', async () => {
-                if (micState.stream) await populateDeviceList();
-            });
+            composeRecording = false;
+            button.classList.remove('recording');
+            const file = await composeRecorder.stop();
+            await composeFromInput(file);
         }
 
-        // ============================================================
-        // Hero three-panel: RAW / IDENTITY / REWRITE — Neil's design moment.
-        // Fills the panels live as each stage of the pipeline completes so judges
-        // see the pipeline BUILDING, not just the final answer.
-        // ============================================================
-        async function runHeroPipeline(text, app) {
-            const rawEl = document.getElementById('hero-raw');
-            const idEl = document.getElementById('hero-identity');
-            const rwEl = document.getElementById('hero-rewrite');
+        const importDrop = qs('import-drop');
+        importDrop.addEventListener('click', () => qs('import-file').click());
+        importDrop.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            importDrop.classList.add('dragover');
+        });
+        importDrop.addEventListener('dragleave', () => importDrop.classList.remove('dragover'));
+        importDrop.addEventListener('drop', async (event) => {
+            event.preventDefault();
+            importDrop.classList.remove('dragover');
+            if (event.dataTransfer.files[0]) await importFile(event.dataTransfer.files[0]);
+        });
+        qs('import-file').addEventListener('change', async (event) => {
+            if (event.target.files[0]) await importFile(event.target.files[0]);
+            event.target.value = '';
+        });
 
-            // 1. RAW — for now, text input IS the raw. When stt.py lands, this becomes
-            //    the Parakeet baseline. We intentionally show the original spelling
-            //    (user's typos + all) so the contrast with the passport-aware result is visible.
-            rawEl.innerHTML = `<span>${escapeHtml(text)}</span>`;
-
-            // 2. IDENTITY — show which passport terms + corrections apply to this input.
-            //    Picks up terms whose lowercase appears in the raw, and corrections
-            //    whose 'wrong' side matches.
-            if (!profile) await refreshProfile();
-            const lower = text.toLowerCase();
-            const matchedTerms = (profile?.terms || []).filter(t => lower.includes(t.text.toLowerCase()));
-            const matchedCorrections = (profile?.corrections || []).filter(c => lower.includes(c.wrong.toLowerCase()));
-            const idParts = [];
-            if (matchedTerms.length) {
-                idParts.push(`<div style="margin-bottom:6px;"><span style="color:var(--text-dim);font-size:11px;">terms matched:</span> ${matchedTerms.map(t => `<span class="chip" style="padding:2px 8px;font-size:11px;">${escapeHtml(t.text)}</span>`).join(' ')}</div>`);
-            }
-            if (matchedCorrections.length) {
-                idParts.push(`<div><span style="color:var(--text-dim);font-size:11px;">corrections:</span> ${matchedCorrections.map(c => `<code style="font-size:11px;color:#f87171;">${escapeHtml(c.wrong)}</code>→<code style="font-size:11px;color:var(--accent);">${escapeHtml(c.right)}</code>`).join(' · ')}</div>`);
-            }
-            const totalTerms = profile?.terms?.length || 0;
-            const totalCorr = profile?.corrections?.length || 0;
-            const vpSamples = profile?.voiceprint_samples || 0;
-            idParts.push(`<div style="margin-top:8px;font-size:11px;color:var(--text-dim);">Passport: ${totalTerms} terms · ${totalCorr} corrections · voiceprint ×${vpSamples}</div>`);
-            idEl.innerHTML = idParts.join('') || `<span class="hero-empty">No passport matches yet. Add terms in step 2.</span>`;
-
-            // 3. REWRITE — resolve app (auto via FunctionGemma, or explicit), then style_transfer.
-            rwEl.innerHTML = '<span class="hero-empty">Thinking…</span>';
-            let resolvedApp = app;
-            let routeNote = '';
+        qs('create-profile-btn').onclick = createProfile;
+        qs('save-memory-text').onclick = importTextMemory;
+        qs('device-enable-btn').onclick = async () => {
             try {
-                if (app === 'auto') {
-                    const detectR = await fetch('/api/detect-app', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text }),
-                    });
-                    const detectJ = await detectR.json();
-                    if (!detectJ.error && detectJ.app) {
-                        resolvedApp = detectJ.app;
-                        routeNote = detectJ.fallback
-                            ? ` · routed via keyword fallback`
-                            : ` · routed via FunctionGemma (${detectJ.time_ms}ms)`;
-                    }
-                }
-                const styleR = await fetch('/api/style', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text, app: resolvedApp }),
-                });
-                const styleJ = await styleR.json();
-                if (styleJ.error) {
-                    rwEl.innerHTML = `<span style="color:var(--danger)">${escapeHtml(styleJ.error)}</span>`;
-                } else {
-                    rwEl.innerHTML =
-                        `<div>${escapeHtml(styleJ.styled || '')}</div>` +
-                        `<div style="margin-top:8px;font-size:11px;color:var(--text-dim);">styled for <b>${resolvedApp}</b>${routeNote}</div>`;
-                }
+                await populateDeviceList();
+                await startDeviceCheck(qs('mic-device-select').value || micState.selectedDeviceId);
             } catch (err) {
-                rwEl.innerHTML = `<span style="color:var(--danger)">${escapeHtml(err.message)}</span>`;
+                qs('device-status').textContent = `Mic error: ${err.message}`;
             }
-        }
-
-        document.getElementById('hero-try-btn').addEventListener('click', () => {
-            const text = document.getElementById('hero-input').value.trim();
-            if (!text) return;
-            const app = document.getElementById('hero-app-select').value;
-            runHeroPipeline(text, app);
+        };
+        qs('device-stop-btn').onclick = () => stopDeviceCheck();
+        qs('mic-device-select').addEventListener('change', async (event) => {
+            micState.selectedDeviceId = event.target.value;
+            if (micState.stream) await startDeviceCheck(micState.selectedDeviceId);
         });
-        document.getElementById('hero-input').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') document.getElementById('hero-try-btn').click();
-        });
+        qs('compose-submit').onclick = () => composeFromInput();
+        qs('compose-mic').onclick = toggleComposeRecording;
 
-        // ============================================================
-        // Init
-        // ============================================================
-        refreshProfile();
+        Promise.all([refreshProfiles(), refreshProfile()]).catch(console.error);
     </script>
 </body>
 </html>

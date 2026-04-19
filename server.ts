@@ -1,349 +1,276 @@
-// server.ts — Voice Right Bun server
-//
-// Serves index.html, exposes API for the Python brain + STT.
-// Python subprocess pattern: call brain.py / stt.py via `bun $` — keeps TS thin.
-//
-// Start: bun run server.ts
-// Open:  http://localhost:3000
-
 import { $ } from "bun";
 
 const PORT = 3000;
-const PROFILE_PATH = "data/profiles/default.voicepassport.json";
-const PROFILE_TEMPLATE = "data/profiles/default.voicepassport.json.template";
-const PREFERENCES_PATH = "voice-right.md";
+const ROOT = process.cwd();
+const PROFILES_DIR = `${ROOT}/data/profiles`;
+const PREFERENCES_PATH = `${ROOT}/voice-right.md`;
+const home = process.env.HOME || "";
+const pythonCandidates = [
+    process.env.VOICE_RIGHT_PYTHON,
+    `${ROOT}/.venv/bin/python`,
+    `${ROOT}/../cactus/venv/bin/python`,
+    `${home}/cactus/venv/bin/python`,
+    `${home}/Documents/cactus/venv/bin/python`,
+    `${home}/Documents/Playground/cactus/venv/bin/python`,
+    "python3",
+].filter(Boolean) as string[];
 
-async function loadProfile() {
-    const f = Bun.file(PROFILE_PATH);
-    if (await f.exists()) return await f.json();
-    // Fall back to template, stamping timestamps
-    const template = await Bun.file(PROFILE_TEMPLATE).json();
-    const now = new Date().toISOString();
-    template.created = now;
-    template.updated = now;
-    await Bun.write(PROFILE_PATH, JSON.stringify(template, null, 2));
-    return template;
+let PYTHON_BIN = "python3";
+for (const candidate of pythonCandidates) {
+    if (candidate === "python3") {
+        PYTHON_BIN = candidate;
+        break;
+    }
+    if (await Bun.file(candidate).exists()) {
+        PYTHON_BIN = candidate;
+        break;
+    }
 }
 
-async function saveProfile(profile: unknown) {
-    await Bun.write(PROFILE_PATH, JSON.stringify(profile, null, 2));
+function slugify(name: string) {
+    return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "default";
 }
+
+function profilePath(nameOrId: string) {
+    return `${PROFILES_DIR}/${slugify(nameOrId)}.voicepassport.json`;
+}
+
+async function ensureProfilesDir() {
+    await Bun.$`mkdir -p ${PROFILES_DIR}`.quiet();
+}
+
+async function ensureDefaultProfile() {
+    await ensureProfilesDir();
+    const path = profilePath("default");
+    if (!(await Bun.file(path).exists())) {
+        await runBrain(["create-profile", "Profile"], path);
+    }
+}
+
+async function runBrain(args: string[], profile?: string) {
+    let cmd = $`${PYTHON_BIN} brain.py ${args}`;
+    if (profile) cmd = cmd.env({ VOICE_RIGHT_PROFILE_PATH: profile });
+    return await cmd.quiet().text();
+}
+
+async function runStt(args: string[], profile?: string) {
+    let cmd = $`${PYTHON_BIN} stt.py ${args}`;
+    if (profile) cmd = cmd.env({ VOICE_RIGHT_PROFILE_PATH: profile });
+    return await cmd.quiet().text();
+}
+
+async function loadProfile(id = "default") {
+    await ensureDefaultProfile();
+    const path = profilePath(id);
+    const file = Bun.file(path);
+    if (!(await file.exists())) {
+        await runBrain(["create-profile", id], path);
+    }
+    return await Bun.file(path).json();
+}
+
+async function saveProfile(id: string, profile: unknown) {
+    await ensureProfilesDir();
+    await Bun.write(profilePath(id), JSON.stringify(profile, null, 2));
+}
+
+function parseLastJson(raw: string) {
+    const lines = raw.trim().split("\n").filter(Boolean);
+    for (let i = lines.length - 1; i >= 0; i--) {
+        try {
+            return JSON.parse(lines[i]);
+        } catch {
+            continue;
+        }
+    }
+    return null;
+}
+
+function isTextLike(file: File) {
+    const name = file.name.toLowerCase();
+    return (
+        file.type.startsWith("text/") ||
+        [".md", ".txt", ".json", ".csv", ".tsv", ".html", ".xml", ".eml"].some((ext) => name.endsWith(ext))
+    );
+}
+
+async function extractText(file: File, tmpPath: string) {
+    if (isTextLike(file)) {
+        return await file.text();
+    }
+
+    const lower = file.name.toLowerCase();
+    if ([".rtf", ".doc", ".docx", ".odt", ".html"].some((ext) => lower.endsWith(ext))) {
+        try {
+            return (await $`textutil -convert txt -stdout ${tmpPath}`.quiet().text()).trim();
+        } catch {
+            return "";
+        }
+    }
+
+    if (lower.endsWith(".pdf")) {
+        try {
+            return (await $`strings ${tmpPath}`.quiet().text()).slice(0, 12000).trim();
+        } catch {
+            return "";
+        }
+    }
+
+    return "";
+}
+
+function normaliseTargets(input: FormDataEntryValue | null) {
+    const raw = String(input || "");
+    return raw
+        .split(",")
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean);
+}
+
+await ensureDefaultProfile();
 
 Bun.serve({
     port: PORT,
     routes: {
-        // Static
         "/": async () => new Response(Bun.file("index.html")),
 
-        // QR code page for audience participation: scans to whatever URL the
-        // viewer is hitting (works for localhost, ngrok tunnel, whatever).
         "/qr": async (req) => {
-            const url = new URL(req.url);
             const host = req.headers.get("host") || `localhost:${PORT}`;
             const proto = host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https";
             const targetUrl = `${proto}://${host}/`;
             const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=420x420&margin=20&bgcolor=09090b&color=fafafa&data=${encodeURIComponent(targetUrl)}`;
-            const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Voice Right — try it</title>
-<style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #09090b; color: #fafafa; font-family: 'Inter', -apple-system, system-ui, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
-.card { text-align: center; max-width: 520px; }
-h1 { font-size: 42px; letter-spacing: -0.02em; margin-bottom: 8px; }
-.tagline { color: #a1a1aa; font-size: 15px; margin-bottom: 40px; }
-.qr-wrap { background: #09090b; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 28px; display: inline-block; }
-img { display: block; width: 100%; max-width: 380px; height: auto; }
-.url { margin-top: 24px; font-family: 'SF Mono', ui-monospace, monospace; font-size: 13px; color: #a1a1aa; word-break: break-all; }
-.hint { margin-top: 28px; color: #71717a; font-size: 13px; line-height: 1.6; }
-</style></head>
-<body>
-<div class="card">
-  <h1>Voice Right</h1>
-  <div class="tagline">The agent that learns you — then translates how you speak 🗣️ into how you type ⌨️.</div>
-  <div class="qr-wrap"><img src="${qrImg}" alt="QR code"></div>
-  <div class="url">${targetUrl}</div>
-  <div class="hint">Scan with your phone camera to try Voice Right right now.<br>Your voice never leaves your device.</div>
-</div>
-</body></html>`;
-            return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+            return new Response(
+                `<!doctype html><html><body style="background:#09090b;color:#fafafa;font-family:Inter,system-ui;display:grid;place-items:center;min-height:100vh">
+                <div style="text-align:center"><h1>Voice Right</h1><p>Scan to try it live.</p><img src="${qrImg}" style="border-radius:20px"><p>${targetUrl}</p></div>
+                </body></html>`,
+                { headers: { "Content-Type": "text/html; charset=utf-8" } },
+            );
         },
 
-        // Profile API
-        "/api/profile": {
+        "/api/profiles": {
             async GET() {
-                const profile = await loadProfile();
-                return Response.json(profile);
+                const raw = await runBrain(["profiles"]);
+                return Response.json(parseLastJson(raw) || []);
+            },
+            async POST(req) {
+                const body = (await req.json()) as { name?: string };
+                const name = body.name?.trim();
+                if (!name) return Response.json({ error: "name required" }, { status: 400 });
+                const path = profilePath(name);
+                const raw = await runBrain(["create-profile", name], path);
+                return Response.json(parseLastJson(raw) || {});
+            },
+        },
+
+        "/api/profile": {
+            async GET(req) {
+                const id = new URL(req.url).searchParams.get("id") || "default";
+                return Response.json(await loadProfile(id));
             },
             async PUT(req) {
-                const profile = await req.json();
-                await saveProfile(profile);
+                const id = new URL(req.url).searchParams.get("id") || "default";
+                await saveProfile(id, await req.json());
                 return Response.json({ ok: true });
             },
         },
 
-        // Preferences (voice-right.md)
         "/api/preferences": async () => {
-            const f = Bun.file(PREFERENCES_PATH);
-            const text = await f.exists() ? await f.text() : "";
+            const text = (await Bun.file(PREFERENCES_PATH).exists()) ? await Bun.file(PREFERENCES_PATH).text() : "";
             return Response.json({ markdown: text });
         },
 
-        // Style transfer — calls brain.py
-        "/api/style": {
-            async POST(req) {
-                const { text, app } = (await req.json()) as { text: string; app: string };
-                if (!text || !app) {
-                    return Response.json({ error: "text and app required" }, { status: 400 });
-                }
-                try {
-                    // Call brain.py subprocess
-                    const result = await $`.venv/bin/python brain.py style ${text} ${app}`
-                        .quiet()
-                        .text();
-                    return Response.json({ styled: result.trim(), app });
-                } catch (err) {
-                    return Response.json({ error: String(err) }, { status: 500 });
-                }
-            },
-        },
-
-        // Screenshot → Gemma 4 E4B vision → term extraction
-        "/api/screenshot-to-terms": {
+        "/api/import-memory": {
             async POST(req) {
                 try {
-                    const formData = await req.formData();
-                    const file = formData.get("file") as File | null;
+                    const form = await req.formData();
+                    const id = String(form.get("profile") || "default");
+                    const profile = profilePath(id);
+                    const file = form.get("file") as File | null;
                     if (!file || typeof file === "string") {
-                        return Response.json({ error: "no file uploaded (form field 'file')" }, { status: 400 });
+                        return Response.json({ error: "file required" }, { status: 400 });
                     }
-
-                    // Write to a temp file brain.py can read
-                    const ext = (file.name.split(".").pop() || "png").toLowerCase();
-                    const tmpPath = `/tmp/voice-right-upload-${Date.now()}.${ext}`;
+                    const ext = (file.name.split(".").pop() || "bin").toLowerCase();
+                    const tmpPath = `/tmp/voice-right-import-${Date.now()}.${ext}`;
                     await Bun.write(tmpPath, file);
 
-                    const raw = await $`.venv/bin/python brain.py terms ${tmpPath}`.quiet().text();
-
-                    // Find the last line that parses as a JSON array (brain.py emits tensor
-                    // debug + [WARN] lines from Cactus before the final JSON).
-                    const lines = raw.trim().split("\n").filter(Boolean);
-                    let terms: string[] | null = null;
-                    for (let i = lines.length - 1; i >= 0; i--) {
-                        const line = lines[i].trim();
-                        if (!line.startsWith("[")) continue;
-                        try {
-                            const parsed = JSON.parse(line);
-                            if (Array.isArray(parsed) && parsed.every(t => typeof t === "string")) {
-                                terms = parsed;
-                                break;
-                            }
-                        } catch { /* keep scanning */ }
+                    let raw = "";
+                    if (file.type.startsWith("image/")) {
+                        raw = await runBrain(["import", "image", file.name, tmpPath], profile);
+                    } else {
+                        const text = await extractText(file, tmpPath);
+                        raw = await runBrain(["import", ext || "text", file.name, text || file.name], profile);
                     }
-
-                    if (!terms) {
-                        return Response.json({
-                            error: "could not parse terms from brain.py output",
-                            raw: raw.slice(-500),
-                        }, { status: 500 });
-                    }
-
-                    return Response.json({ terms, image: tmpPath });
+                    const payload = parseLastJson(raw);
+                    return Response.json({ ok: true, ...(payload || {}) });
                 } catch (err) {
                     return Response.json({ error: String(err) }, { status: 500 });
                 }
             },
         },
 
-        // Capture a user correction: diff original STT output vs edited text,
-        // extract (wrong, right) phrase pairs, append to passport.
-        "/api/correction": {
-            async POST(req) {
-                const { original, edited } = (await req.json()) as { original: string; edited: string };
-                if (typeof original !== "string" || typeof edited !== "string") {
-                    return Response.json({ error: "original and edited (strings) required" }, { status: 400 });
-                }
-                try {
-                    const raw = await $`.venv/bin/python brain.py correction ${original} ${edited}`
-                        .quiet()
-                        .text();
-
-                    // Same parsing pattern as /api/screenshot-to-terms — find last JSON line.
-                    const lines = raw.trim().split("\n").filter(Boolean);
-                    let added: unknown[] | null = null;
-                    for (let i = lines.length - 1; i >= 0; i--) {
-                        const line = lines[i].trim();
-                        if (!line.startsWith("[")) continue;
-                        try {
-                            const parsed = JSON.parse(line);
-                            if (Array.isArray(parsed)) { added = parsed; break; }
-                        } catch { /* keep scanning */ }
-                    }
-                    if (!added) {
-                        return Response.json({
-                            error: "could not parse corrections from brain.py output",
-                            raw: raw.slice(-500),
-                        }, { status: 500 });
-                    }
-                    return Response.json({ added });
-                } catch (err) {
-                    return Response.json({ error: String(err) }, { status: 500 });
-                }
-            },
-        },
-
-        // App routing via FunctionGemma 270M: takes free-form text, picks a target
-        // app via on-device function calling. Falls back to a keyword heuristic when
-        // the tiny model doesn't commit (common — 270M is small). Returns which path
-        // was used so the UI can show the honest story.
-        "/api/detect-app": {
-            async POST(req) {
-                try {
-                    const { text } = (await req.json()) as { text: string };
-                    if (!text) return Response.json({ error: "text required" }, { status: 400 });
-
-                    const raw = await $`.venv/bin/python brain.py detect-app ${text}`.quiet().text();
-                    const lines = raw.trim().split("\n").filter(Boolean);
-                    let parsed: any = null;
-                    for (let i = lines.length - 1; i >= 0; i--) {
-                        const line = lines[i].trim();
-                        if (!line.startsWith("{")) continue;
-                        try { parsed = JSON.parse(line); break; } catch { /* keep scanning */ }
-                    }
-                    if (!parsed) {
-                        return Response.json({
-                            error: "could not parse detect-app result",
-                            raw: raw.slice(-500),
-                        }, { status: 500 });
-                    }
-                    return Response.json(parsed);
-                } catch (err) {
-                    return Response.json({ error: String(err) }, { status: 500 });
-                }
-            },
-        },
-
-        // Voiceprint: accept an audio recording, compute 256-dim speaker embedding,
-        // running-average into the passport. Audio must be 16-bit PCM WAV.
-        // The brain converts from WebM/other via ffmpeg before calling this endpoint
-        // (we also do a best-effort conversion here to unblock direct browser MediaRecorder
-        // blobs which are typically audio/webm).
-        "/api/voiceprint": {
-            async POST(req) {
-                try {
-                    const formData = await req.formData();
-                    const file = formData.get("file") as File | null;
-                    if (!file || typeof file === "string") {
-                        return Response.json({ error: "no file uploaded (form field 'file')" }, { status: 400 });
-                    }
-
-                    // Write raw upload
-                    const rawPath = `/tmp/voice-right-voiceprint-${Date.now()}.bin`;
-                    await Bun.write(rawPath, file);
-
-                    // Convert to 16-bit PCM 16kHz mono WAV (speaker model requires this).
-                    const wavPath = `${rawPath}.wav`;
-                    const ff = await $`ffmpeg -y -i ${rawPath} -ar 16000 -ac 1 -sample_fmt s16 ${wavPath}`
-                        .quiet()
-                        .nothrow();
-                    if (ff.exitCode !== 0) {
-                        return Response.json({
-                            error: "ffmpeg conversion failed",
-                            stderr: String(ff.stderr).slice(-500),
-                        }, { status: 500 });
-                    }
-
-                    const raw = await $`.venv/bin/python brain.py voiceprint ${wavPath}`.quiet().text();
-
-                    // brain.py prints a JSON object on its last line; scan from the end.
-                    const lines = raw.trim().split("\n").filter(Boolean);
-                    let parsed: any = null;
-                    for (let i = lines.length - 1; i >= 0; i--) {
-                        const line = lines[i].trim();
-                        if (!line.startsWith("{")) continue;
-                        try { parsed = JSON.parse(line); break; } catch { /* keep scanning */ }
-                    }
-                    if (!parsed) {
-                        return Response.json({
-                            error: "could not parse voiceprint result",
-                            raw: raw.slice(-500),
-                        }, { status: 500 });
-                    }
-                    return Response.json(parsed);
-                } catch (err) {
-                    return Response.json({ error: String(err) }, { status: 500 });
-                }
-            },
-        },
-
-        // Calibration: generate personalized script from passport terms
         "/api/calibrate/generate": {
             async POST(req) {
-                try {
-                    // Use passport terms if no list in body.
-                    let terms: string[] = [];
-                    try {
-                        const body = (await req.json()) as { terms?: string[] } | null;
-                        if (body && Array.isArray(body.terms)) terms = body.terms;
-                    } catch { /* empty body is fine */ }
-
-                    if (terms.length === 0) {
-                        const profile = await loadProfile();
-                        terms = (profile.terms || []).map((t: any) => t.text).filter(Boolean);
-                    }
-
-                    const termArg = terms.join(",");
-                    const raw = termArg
-                        ? await $`.venv/bin/python brain.py calibrate ${termArg}`.quiet().text()
-                        : await $`.venv/bin/python brain.py calibrate`.quiet().text();
-
-                    // Find last JSON array line (brain.py emits tensor debug before the JSON).
-                    const lines = raw.trim().split("\n").filter(Boolean);
-                    let sentences: string[] | null = null;
-                    for (let i = lines.length - 1; i >= 0; i--) {
-                        const line = lines[i].trim();
-                        if (!line.startsWith("[")) continue;
-                        try {
-                            const parsed = JSON.parse(line);
-                            if (Array.isArray(parsed) && parsed.every(s => typeof s === "string")) {
-                                sentences = parsed;
-                                break;
-                            }
-                        } catch { /* keep scanning */ }
-                    }
-
-                    if (!sentences) {
-                        return Response.json({
-                            error: "could not parse sentences from brain.py output",
-                            raw: raw.slice(-500),
-                        }, { status: 500 });
-                    }
-                    return Response.json({ sentences });
-                } catch (err) {
-                    return Response.json({ error: String(err) }, { status: 500 });
-                }
+                const body = (await req.json().catch(() => ({}))) as { profile?: string; terms?: string[] };
+                const id = body.profile || "default";
+                const profile = profilePath(id);
+                const termArg = Array.isArray(body.terms) && body.terms.length ? body.terms.join(",") : "";
+                const raw = termArg ? await runBrain(["calibrate", termArg], profile) : await runBrain(["calibrate"], profile);
+                return Response.json({ sentences: parseLastJson(raw) || [] });
             },
         },
 
-        // Calibration: accept an audio recording, stub until stt.py lands.
-        // Returns simulated before/after accuracy scaled by passport richness
-        // so the UI can demo the "82% → 97%" moment even before wiring STT.
         "/api/calibrate/benchmark": {
             async POST(req) {
                 try {
-                    const profile = await loadProfile();
-                    const termCount = (profile.terms || []).length;
-                    const corrCount = (profile.corrections || []).length;
+                    const form = await req.formData();
+                    const id = String(form.get("profile") || "default");
+                    const profile = profilePath(id);
+                    const file = form.get("file") as File | null;
+                    const expected = String(form.get("expected") || "");
+                    if (!file || typeof file === "string") {
+                        return Response.json({ error: "file required" }, { status: 400 });
+                    }
+                    const tmpPath = `/tmp/voice-right-calibrate-${Date.now()}.wav`;
+                    await Bun.write(tmpPath, file);
+                    const raw = await runStt(["benchmark", tmpPath, expected], profile);
+                    return Response.json(parseLastJson(raw) || {});
+                } catch (err) {
+                    return Response.json({ error: String(err) }, { status: 500 });
+                }
+            },
+        },
 
-                    // Before: naive baseline roughly 60-82% depending on how hard the
-                    // user's vocabulary is. After: rises toward 97% as passport fills up.
-                    const before = Math.max(58, 82 - termCount * 2);
-                    const after = Math.min(97, before + 10 + termCount * 1 + corrCount * 2);
+        "/api/compose": {
+            async POST(req) {
+                try {
+                    const form = await req.formData();
+                    const id = String(form.get("profile") || "default");
+                    const profile = profilePath(id);
+                    const targets = normaliseTargets(form.get("targets"));
+                    const typedText = String(form.get("text") || "").trim();
+                    const file = form.get("file") as File | null;
+                    let transcript = typedText;
+                    let stt = null;
 
+                    if (file && typeof file !== "string" && file.size) {
+                        const tmpPath = `/tmp/voice-right-compose-${Date.now()}.wav`;
+                        await Bun.write(tmpPath, file);
+                        const rawStt = await runStt(["transcribe", tmpPath], profile);
+                        stt = parseLastJson(rawStt) || {};
+                        transcript = stt.final || stt.whisper_pass2 || stt.whisper_pass1 || stt.parakeet || transcript;
+                    }
+
+                    if (!transcript) {
+                        return Response.json({ error: "audio or text required" }, { status: 400 });
+                    }
+
+                    const rawCompose = await runBrain(["compose", transcript, targets.join(",") || "email"], profile);
+                    const composed = parseLastJson(rawCompose) || {};
                     return Response.json({
-                        accuracy_before: before,
-                        accuracy_after: after,
-                        patterns_learned: corrCount,
-                        stt_wired: false,
-                        note: "stt.py not wired — accuracy simulated from passport richness",
+                        transcript,
+                        stt,
+                        intent: composed.intent || transcript,
+                        outputs: composed.outputs || {},
                     });
                 } catch (err) {
                     return Response.json({ error: String(err) }, { status: 500 });
@@ -351,20 +278,15 @@ img { display: block; width: 100%; max-width: 380px; height: auto; }
             },
         },
 
-        // Transcription — will call stt.py once Neil's stt.py lands
-        "/api/transcribe": {
+        "/api/style": {
             async POST(req) {
-                return Response.json({
-                    error: "stt.py not yet wired — Neil's piece",
-                    parakeet: "",
-                    whisper_pass1: "",
-                    whisper_pass2: "",
-                }, { status: 501 });
+                const { profile = "default", text, app } = (await req.json()) as { profile?: string; text: string; app: string };
+                const raw = await runBrain(["style", text, app], profilePath(profile));
+                return Response.json({ styled: raw.trim(), app });
             },
         },
     },
 
-    // 404 fallback
     fetch() {
         return new Response("Not Found", { status: 404 });
     },
