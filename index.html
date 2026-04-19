@@ -302,7 +302,7 @@
     <div class="container">
         <div class="header">
             <div class="logo">Voice Right</div>
-            <div class="tagline">Hear👂 you and write✍️ for you correctly, everywhere.</div>
+            <div class="tagline">The AI agent that maps your voice output to your writing output.</div>
         </div>
 
         <!-- Hero three-panel: RAW / IDENTITY / REWRITE — the pipeline made visible.
@@ -310,7 +310,7 @@
              but can also be triggered directly from the "Try it now" input below. -->
         <div class="card" id="hero-pipeline" style="margin-bottom: 20px; border: 1px solid var(--border);">
             <div style="display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap;">
-                <input type="text" id="hero-input" placeholder="Try it: type messy voice dictation, e.g. &ldquo;hey so we just launched ybuffet&rdquo;"
+                <input type="text" id="hero-input" placeholder="Type how you'd say it aloud. Voice Right maps it to how you'd write it — per app."
                     style="flex: 1; min-width: 260px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-family: inherit; font-size: 13px;">
                 <select class="app-select" id="hero-app-select" style="min-width: 170px;">
                     <option value="auto">Auto (FunctionGemma)</option>
@@ -326,24 +326,24 @@
             </div>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
                 <div class="hero-panel" data-kind="raw">
-                    <div class="hero-panel-label">RAW</div>
-                    <div class="hero-panel-hint">Fast baseline transcript</div>
+                    <div class="hero-panel-label">YOUR VOICE OUTPUT</div>
+                    <div class="hero-panel-hint">How you actually spoke it</div>
                     <div class="hero-panel-body" id="hero-raw">
-                        <span class="hero-empty">Generic voice input.<br>Won't know your terms.</span>
+                        <span class="hero-empty">Messy dictation in.<br>Generic STT won't know you.</span>
                     </div>
                 </div>
                 <div class="hero-panel" data-kind="identity">
-                    <div class="hero-panel-label">IDENTITY</div>
-                    <div class="hero-panel-hint">Passport terms + corrections</div>
+                    <div class="hero-panel-label">THE MAP</div>
+                    <div class="hero-panel-hint">Your passport — the function that connects voice to writing</div>
                     <div class="hero-panel-body" id="hero-identity">
-                        <span class="hero-empty">Your portable profile.<br>Runs locally.</span>
+                        <span class="hero-empty">Vocabulary. Corrections.<br>Voiceprint. Style.</span>
                     </div>
                 </div>
                 <div class="hero-panel" data-kind="rewrite">
-                    <div class="hero-panel-label">REWRITE</div>
-                    <div class="hero-panel-hint">Styled for the app you're in</div>
+                    <div class="hero-panel-label">YOUR WRITING OUTPUT</div>
+                    <div class="hero-panel-hint">How you would have typed it, per app</div>
                     <div class="hero-panel-body" id="hero-rewrite">
-                        <span class="hero-empty">Sounds like how you'd<br>type it there.</span>
+                        <span class="hero-empty">Your voice in,<br>your writing out.</span>
                     </div>
                 </div>
             </div>
