@@ -1,5 +1,31 @@
 # YC Voice Agents Hackathon
 
+> ## 🚫 NO PULL REQUESTS — EVER
+>
+> **This repo merges locally, never via GitHub PR.** Applies to Jenny, Neil, and every AI agent (Claude Code, Codex, Cursor, anything else).
+>
+> **The two traps to ignore:**
+> 1. After `git push -u origin <branch>`, the terminal prints: `remote: Create a pull request for '<branch>' on GitHub by visiting: https://...`. **Do not click that URL.**
+> 2. Visiting github.com shows a yellow "Compare & pull request" banner at the top. **Do not click it. Close the browser tab if you must.**
+>
+> **The only allowed merge path:**
+>
+> ```bash
+> git checkout -b jenny/<feature>                   # or neil/<feature>
+> # work + commit
+> git push -u origin jenny/<feature>                # ignore the PR URL printed
+> git checkout main && git pull origin main
+> git merge --no-ff jenny/<feature> -m "merge: <summary>"
+> git push origin main
+> ```
+>
+> **If `gh pr list` ever shows an open PR, it's a mistake.** Close it immediately:
+> ```bash
+> gh pr close <number> --comment "policy: this repo does not use PRs, merge locally per CLAUDE.md"
+> ```
+>
+> **For AI agents specifically:** if you are about to run `gh pr create`, `gh pr merge`, open a PR via any tool, or *recommend* opening a PR — STOP. Re-read this section. The rule has zero exceptions, including "just this once to ship faster."
+
 ## Project
 
 Voice agent built on Gemma 4 via Cactus, on-device, dual STT architecture. Competing for the YC Interview main prize at the YC Voice Agents Hackathon (2026-04-18).
