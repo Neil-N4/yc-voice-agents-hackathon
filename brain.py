@@ -39,6 +39,7 @@ PROFILE_PATH = Path("data/profiles/default.voicepassport.json")
 PREFERENCES_PATH = Path("voice-right.md")
 GEMMA_4_E4B = "google/gemma-4-E4B-it"    # primary brain (vision, style transfer, reconciliation)
 GEMMA_3_1B = "google/gemma-3-1b-it"      # lighter / less chain-of-thoughty — for text gen like calibration
+FUNCTION_GEMMA = "google/functiongemma-270m-it"            # Gemma 3 270M fine-tuned for function/tool calling — on-device app routing
 SPEAKER_MODEL = "pyannote/wespeaker-voxceleb-resnet34-LM"   # 256-dim speaker embedding (voiceprint)
 VAD_MODEL = "snakers4/silero-vad"                          # voice activity detection
 
@@ -152,6 +153,7 @@ def load_preferences_md(path: Path = PREFERENCES_PATH) -> str:
 
 _model_handle: int | None = None      # Gemma 4 E4B (primary, multimodal)
 _light_handle: int | None = None      # Gemma 3 1B (text-only, less verbose)
+_fn_handle: int | None = None         # FunctionGemma 270M (function calling)
 _speaker_handle: int | None = None    # WeSpeaker ResNet34 (256-dim voiceprint)
 _vad_handle: int | None = None        # Silero VAD
 
@@ -183,6 +185,18 @@ def load_gemma_light() -> int:
     return _light_handle
 
 
+def load_function_gemma() -> int:
+    """Load FunctionGemma 270M — a Gemma-3 variant fine-tuned for structured tool calls.
+    Tiny (~200MB RAM), <100ms inference. Ideal for quick on-device routing decisions."""
+    global _fn_handle
+    if not CACTUS_AVAILABLE:
+        raise RuntimeError("Cactus not available")
+    if _fn_handle is None:
+        weights = ensure_model(FUNCTION_GEMMA)
+        _fn_handle = cactus_init(str(weights), None, False)
+    return _fn_handle
+
+
 def load_speaker_model() -> int:
     """Load the 256-dim speaker-embedding model (voiceprint)."""
     global _speaker_handle
@@ -206,18 +220,14 @@ def load_vad_model() -> int:
 
 
 def unload_gemma() -> None:
-    global _model_handle, _light_handle, _speaker_handle, _vad_handle
+    global _model_handle, _light_handle, _fn_handle, _speaker_handle, _vad_handle
     if CACTUS_AVAILABLE:
-        for h, name in (
-            (_model_handle, "_model_handle"),
-            (_light_handle, "_light_handle"),
-            (_speaker_handle, "_speaker_handle"),
-            (_vad_handle, "_vad_handle"),
-        ):
+        for h in (_model_handle, _light_handle, _fn_handle, _speaker_handle, _vad_handle):
             if h is not None:
                 cactus_destroy(h)
         _model_handle = None
         _light_handle = None
+        _fn_handle = None
         _speaker_handle = None
         _vad_handle = None
 
@@ -426,6 +436,96 @@ def style_transfer(text: str, target_app: str, passport: VoicePassport,
     return result["response"].strip()
 
 
+APP_TARGETS = ["gmail", "imessage", "discord", "slack", "linkedin", "twitter", "terminal"]
+
+
+def detect_app_from_text(text: str) -> dict:
+    """Use FunctionGemma 270M to pick the best target app from free-form text.
+
+    FunctionGemma sees the user's spoken/typed text and a set of format-* tools,
+    then calls the one that fits best. The tool name tells us the app.
+
+    Returns {"app": "<slug>", "confidence": 0..1, "time_ms": float, "fallback": bool}.
+    Falls back to a heuristic if the model refuses to call any tool.
+    """
+    if not CACTUS_AVAILABLE:
+        raise RuntimeError("Cactus not available — detect_app_from_text requires FunctionGemma")
+
+    model = load_function_gemma()
+
+    tools = json.dumps([
+        {
+            "type": "function",
+            "function": {
+                "name": f"format_for_{app}",
+                "description": {
+                    "gmail":    "Format as a professional email with subject, greeting, sign-off. Use for work correspondence, investor updates, formal requests.",
+                    "imessage": "Format as a casual text message, 1-2 short sentences, emoji if natural. Use for friends, family, casual personal messages.",
+                    "discord":  "Format as a casual Discord message, lowercase, short, emoji OK. Use for community chat, gaming, casual online groups.",
+                    "slack":    "Format as a brief friendly Slack message. Use for workplace team chat, quick status updates to coworkers.",
+                    "linkedin": "Format as a professional LinkedIn post, measured tone, no 'excited to announce'. Use for career updates, business networking.",
+                    "twitter":  "Format as a punchy tweet under 240 characters. Use for public broadcast, hot takes, announcements.",
+                    "terminal": "Format as a terminal command or code comment in imperative mood. Use when dictating code, shell commands, or commit messages.",
+                }[app],
+                "parameters": {
+                    "type": "object",
+                    "properties": {"text": {"type": "string", "description": "The user's original dictation"}},
+                    "required": ["text"],
+                },
+            },
+        }
+        for app in APP_TARGETS
+    ])
+
+    messages = json.dumps([{
+        "role": "user",
+        "content": (
+            "Pick the single best formatter tool for this user's voice dictation. "
+            "Choose the tool whose target app matches how they'd naturally type this.\n\n"
+            f"User dictation: {text!r}"
+        ),
+    }])
+    options = json.dumps({"max_tokens": 120, "temperature": 0.1})
+
+    import time
+    t0 = time.time()
+    result = json.loads(cactus_complete(model, messages, options, tools, None))
+    elapsed_ms = (time.time() - t0) * 1000.0
+
+    if not result.get("success"):
+        raise RuntimeError(f"FunctionGemma failed: {result.get('error')}")
+
+    calls = result.get("function_calls") or []
+    for call in calls:
+        name = call.get("name", "")
+        if name.startswith("format_for_"):
+            app = name[len("format_for_"):]
+            if app in APP_TARGETS:
+                return {
+                    "app": app,
+                    "confidence": float(result.get("confidence", 0.0)),
+                    "time_ms": round(elapsed_ms, 1),
+                    "fallback": False,
+                }
+
+    # Fallback heuristic: keyword-based guess if FunctionGemma doesn't commit.
+    t = text.lower()
+    guess = "gmail"
+    for kw, app in (
+        ("dear ", "gmail"), ("investor", "gmail"), ("subject:", "gmail"),
+        ("team ", "slack"), ("standup", "slack"), ("deploy", "slack"),
+        ("discord", "discord"), ("gaming", "discord"),
+        ("tweet", "twitter"), ("hot take", "twitter"),
+        ("linkedin", "linkedin"), ("excited to announce", "linkedin"),
+        ("hey ", "imessage"), ("brb", "imessage"), ("gtg", "imessage"),
+        ("sudo ", "terminal"), ("git ", "terminal"), ("npm ", "terminal"),
+    ):
+        if kw in t:
+            guess = app
+            break
+    return {"app": guess, "confidence": 0.0, "time_ms": round(elapsed_ms, 1), "fallback": True}
+
+
 def compute_voiceprint(audio_path: str) -> list[float]:
     """Extract a 256-dim speaker embedding (voiceprint) from a WAV file.
 
@@ -594,6 +694,18 @@ def _cli() -> None:
         finally:
             unload_gemma()
 
+    elif cmd == "detect-app":
+        # Usage: python brain.py detect-app "user's dictated text"
+        if len(sys.argv) < 3:
+            print('usage: python brain.py detect-app "<text>"')
+            return
+        text = sys.argv[2]
+        try:
+            result = detect_app_from_text(text)
+            print(json.dumps(result))
+        finally:
+            unload_gemma()
+
     elif cmd == "voiceprint":
         # Usage: python brain.py voiceprint <audio_path_16bit_pcm_wav>
         # Stores the running-average voiceprint into the passport.
@@ -646,7 +758,7 @@ def _cli() -> None:
 
     else:
         print(f"unknown command: {cmd}")
-        print("available: style, terms, calibrate, correction, voiceprint, vad, info")
+        print("available: style, terms, calibrate, detect-app, correction, voiceprint, vad, info")
 
 
 if __name__ == "__main__":

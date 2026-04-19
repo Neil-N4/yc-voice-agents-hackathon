@@ -190,6 +190,37 @@ img { display: block; width: 100%; max-width: 380px; height: auto; }
             },
         },
 
+        // App routing via FunctionGemma 270M: takes free-form text, picks a target
+        // app via on-device function calling. Falls back to a keyword heuristic when
+        // the tiny model doesn't commit (common — 270M is small). Returns which path
+        // was used so the UI can show the honest story.
+        "/api/detect-app": {
+            async POST(req) {
+                try {
+                    const { text } = (await req.json()) as { text: string };
+                    if (!text) return Response.json({ error: "text required" }, { status: 400 });
+
+                    const raw = await $`.venv/bin/python brain.py detect-app ${text}`.quiet().text();
+                    const lines = raw.trim().split("\n").filter(Boolean);
+                    let parsed: any = null;
+                    for (let i = lines.length - 1; i >= 0; i--) {
+                        const line = lines[i].trim();
+                        if (!line.startsWith("{")) continue;
+                        try { parsed = JSON.parse(line); break; } catch { /* keep scanning */ }
+                    }
+                    if (!parsed) {
+                        return Response.json({
+                            error: "could not parse detect-app result",
+                            raw: raw.slice(-500),
+                        }, { status: 500 });
+                    }
+                    return Response.json(parsed);
+                } catch (err) {
+                    return Response.json({ error: String(err) }, { status: 500 });
+                }
+            },
+        },
+
         // Voiceprint: accept an audio recording, compute 256-dim speaker embedding,
         // running-average into the passport. Audio must be 16-bit PCM WAV.
         // The brain converts from WebM/other via ffmpeg before calling this endpoint

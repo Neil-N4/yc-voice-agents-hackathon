@@ -388,6 +388,7 @@
                 <div class="mic-row">
                     <button class="mic-button" id="mic-button" title="Record">🎙</button>
                     <select class="app-select" id="app-select">
+                        <option value="auto">Auto (FunctionGemma)</option>
                         <option value="gmail">Gmail</option>
                         <option value="imessage">iMessage</option>
                         <option value="discord">Discord</option>
@@ -493,11 +494,34 @@
         document.getElementById('style-button').addEventListener('click', async () => {
             const text = document.getElementById('text-input').value.trim();
             if (!text) return;
-            const app = document.getElementById('app-select').value;
+            let app = document.getElementById('app-select').value;
             const out = document.getElementById('out-styled');
+            const appLabel = document.getElementById('out-app-label');
             out.textContent = 'Thinking... (first run loads Gemma 4 E4B, ~30s)';
             out.classList.remove('empty');
+
             try {
+                // Auto mode: FunctionGemma 270M picks the app first, then Gemma 4 E4B styles it.
+                if (app === 'auto') {
+                    out.textContent = 'FunctionGemma 270M routing…';
+                    const detectR = await fetch('/api/detect-app', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text }),
+                    });
+                    const detectJ = await detectR.json();
+                    if (detectJ.error || !detectJ.app) {
+                        out.textContent = `Auto-route error: ${detectJ.error || 'no app'}`;
+                        return;
+                    }
+                    app = detectJ.app;
+                    const path = detectJ.fallback ? 'keyword fallback' : `FunctionGemma (${detectJ.time_ms}ms)`;
+                    appLabel.textContent = `${app} · routed via ${path}`;
+                    out.textContent = `Routed to ${app}. Styling with Gemma 4 E4B…`;
+                } else {
+                    appLabel.textContent = app;
+                }
+
                 const r = await fetch('/api/style', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
