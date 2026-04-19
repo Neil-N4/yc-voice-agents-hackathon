@@ -264,6 +264,33 @@
         /* Placeholder state */
         .output .empty { color: var(--text-muted); font-style: italic; }
 
+        /* Hero 3-panel (RAW / IDENTITY / REWRITE) */
+        .hero-panel {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            min-height: 110px;
+            display: flex;
+            flex-direction: column;
+        }
+        .hero-panel-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            color: var(--text-dim);
+        }
+        .hero-panel[data-kind="raw"] .hero-panel-label { color: #f87171; }
+        .hero-panel[data-kind="identity"] .hero-panel-label { color: #fbbf24; }
+        .hero-panel[data-kind="rewrite"] .hero-panel-label { color: var(--accent); }
+        .hero-panel-hint { font-size: 12px; color: var(--text-muted); margin-top: 2px; margin-bottom: 10px; }
+        .hero-panel-body { font-size: 13px; line-height: 1.5; flex: 1; }
+        .hero-empty { color: var(--text-muted); font-style: italic; }
+
+        @media (max-width: 640px) {
+            #hero-pipeline > div:last-child { grid-template-columns: 1fr !important; }
+        }
+
         /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -275,7 +302,51 @@
     <div class="container">
         <div class="header">
             <div class="logo">Voice Right</div>
-            <div class="tagline">Hear👂 you and write✍️ for you correctly, everywhere.</div>
+            <div class="tagline">Speak once. See it sound like you.</div>
+        </div>
+
+        <!-- Hero three-panel: RAW / IDENTITY / REWRITE — the pipeline made visible.
+             Fills in live the first time the user runs a style-transfer in Step 4,
+             but can also be triggered directly from the "Try it now" input below. -->
+        <div class="card" id="hero-pipeline" style="margin-bottom: 20px; border: 1px solid var(--border);">
+            <div style="display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap;">
+                <input type="text" id="hero-input" placeholder="Try it: type messy voice dictation, e.g. &ldquo;hey so we just launched ybuffet&rdquo;"
+                    style="flex: 1; min-width: 260px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-family: inherit; font-size: 13px;">
+                <select class="app-select" id="hero-app-select" style="min-width: 170px;">
+                    <option value="auto">Auto (FunctionGemma)</option>
+                    <option value="gmail">Gmail</option>
+                    <option value="imessage">iMessage</option>
+                    <option value="discord">Discord</option>
+                    <option value="linkedin">LinkedIn</option>
+                    <option value="twitter">X / Twitter</option>
+                    <option value="slack">Slack</option>
+                    <option value="terminal">Terminal</option>
+                </select>
+                <button class="primary" id="hero-try-btn">Try with your voice</button>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                <div class="hero-panel" data-kind="raw">
+                    <div class="hero-panel-label">RAW</div>
+                    <div class="hero-panel-hint">Fast baseline transcript</div>
+                    <div class="hero-panel-body" id="hero-raw">
+                        <span class="hero-empty">Generic voice input.<br>Won't know your terms.</span>
+                    </div>
+                </div>
+                <div class="hero-panel" data-kind="identity">
+                    <div class="hero-panel-label">IDENTITY</div>
+                    <div class="hero-panel-hint">Passport terms + corrections</div>
+                    <div class="hero-panel-body" id="hero-identity">
+                        <span class="hero-empty">Your portable profile.<br>Runs locally.</span>
+                    </div>
+                </div>
+                <div class="hero-panel" data-kind="rewrite">
+                    <div class="hero-panel-label">REWRITE</div>
+                    <div class="hero-panel-hint">Styled for the app you're in</div>
+                    <div class="hero-panel-body" id="hero-rewrite">
+                        <span class="hero-empty">Sounds like how you'd<br>type it there.</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="passport-bar">
@@ -289,9 +360,9 @@
         </div>
 
         <div class="steps">
-            <div class="step active" data-step="1">1. Mic</div>
-            <div class="step" data-step="2">2. Learn</div>
-            <div class="step" data-step="3">3. Calibrate</div>
+            <div class="step active" data-step="1">1. Try</div>
+            <div class="step" data-step="2">2. Teach</div>
+            <div class="step" data-step="3">3. Tune</div>
             <div class="step" data-step="4">4. Use</div>
         </div>
 
@@ -1032,6 +1103,88 @@
                 if (micState.stream) await populateDeviceList();
             });
         }
+
+        // ============================================================
+        // Hero three-panel: RAW / IDENTITY / REWRITE — Neil's design moment.
+        // Fills the panels live as each stage of the pipeline completes so judges
+        // see the pipeline BUILDING, not just the final answer.
+        // ============================================================
+        async function runHeroPipeline(text, app) {
+            const rawEl = document.getElementById('hero-raw');
+            const idEl = document.getElementById('hero-identity');
+            const rwEl = document.getElementById('hero-rewrite');
+
+            // 1. RAW — for now, text input IS the raw. When stt.py lands, this becomes
+            //    the Parakeet baseline. We intentionally show the original spelling
+            //    (user's typos + all) so the contrast with the passport-aware result is visible.
+            rawEl.innerHTML = `<span>${escapeHtml(text)}</span>`;
+
+            // 2. IDENTITY — show which passport terms + corrections apply to this input.
+            //    Picks up terms whose lowercase appears in the raw, and corrections
+            //    whose 'wrong' side matches.
+            if (!profile) await refreshProfile();
+            const lower = text.toLowerCase();
+            const matchedTerms = (profile?.terms || []).filter(t => lower.includes(t.text.toLowerCase()));
+            const matchedCorrections = (profile?.corrections || []).filter(c => lower.includes(c.wrong.toLowerCase()));
+            const idParts = [];
+            if (matchedTerms.length) {
+                idParts.push(`<div style="margin-bottom:6px;"><span style="color:var(--text-dim);font-size:11px;">terms matched:</span> ${matchedTerms.map(t => `<span class="chip" style="padding:2px 8px;font-size:11px;">${escapeHtml(t.text)}</span>`).join(' ')}</div>`);
+            }
+            if (matchedCorrections.length) {
+                idParts.push(`<div><span style="color:var(--text-dim);font-size:11px;">corrections:</span> ${matchedCorrections.map(c => `<code style="font-size:11px;color:#f87171;">${escapeHtml(c.wrong)}</code>→<code style="font-size:11px;color:var(--accent);">${escapeHtml(c.right)}</code>`).join(' · ')}</div>`);
+            }
+            const totalTerms = profile?.terms?.length || 0;
+            const totalCorr = profile?.corrections?.length || 0;
+            const vpSamples = profile?.voiceprint_samples || 0;
+            idParts.push(`<div style="margin-top:8px;font-size:11px;color:var(--text-dim);">Passport: ${totalTerms} terms · ${totalCorr} corrections · voiceprint ×${vpSamples}</div>`);
+            idEl.innerHTML = idParts.join('') || `<span class="hero-empty">No passport matches yet. Add terms in step 2.</span>`;
+
+            // 3. REWRITE — resolve app (auto via FunctionGemma, or explicit), then style_transfer.
+            rwEl.innerHTML = '<span class="hero-empty">Thinking…</span>';
+            let resolvedApp = app;
+            let routeNote = '';
+            try {
+                if (app === 'auto') {
+                    const detectR = await fetch('/api/detect-app', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text }),
+                    });
+                    const detectJ = await detectR.json();
+                    if (!detectJ.error && detectJ.app) {
+                        resolvedApp = detectJ.app;
+                        routeNote = detectJ.fallback
+                            ? ` · routed via keyword fallback`
+                            : ` · routed via FunctionGemma (${detectJ.time_ms}ms)`;
+                    }
+                }
+                const styleR = await fetch('/api/style', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, app: resolvedApp }),
+                });
+                const styleJ = await styleR.json();
+                if (styleJ.error) {
+                    rwEl.innerHTML = `<span style="color:var(--danger)">${escapeHtml(styleJ.error)}</span>`;
+                } else {
+                    rwEl.innerHTML =
+                        `<div>${escapeHtml(styleJ.styled || '')}</div>` +
+                        `<div style="margin-top:8px;font-size:11px;color:var(--text-dim);">styled for <b>${resolvedApp}</b>${routeNote}</div>`;
+                }
+            } catch (err) {
+                rwEl.innerHTML = `<span style="color:var(--danger)">${escapeHtml(err.message)}</span>`;
+            }
+        }
+
+        document.getElementById('hero-try-btn').addEventListener('click', () => {
+            const text = document.getElementById('hero-input').value.trim();
+            if (!text) return;
+            const app = document.getElementById('hero-app-select').value;
+            runHeroPipeline(text, app);
+        });
+        document.getElementById('hero-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') document.getElementById('hero-try-btn').click();
+        });
 
         // ============================================================
         // Init
